@@ -4,7 +4,7 @@
  *                     Final Project: Safra's Algorithm                       *
  *             Erik Sargent (esargent), Vaidehi Srinivas (vaidehis)           *
  *                                                                            *
- *            safra_tree.cpp - header for Safra tree data structure           *
+ *             safra_tree.h - header for Safra tree data structure            *
  *                                                                            *
  * ************************************************************************** */
 
