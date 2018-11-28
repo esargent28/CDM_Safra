@@ -24,12 +24,12 @@ public:
     ~SafraTree();
 
     // Public methods for each step of the algorithm
-    void UnmarkAllNodes();               // (1)
+    void UnmarkAllNodes();              // (1)
     void UpdateStateSets(const int &c); // (2)
-    void AttachChildren();               // (3)
-    void HorizontalMerge();              // (4)
-    void KillEmptyNodes();               // (5)
-    void VerticalMerge();                // (6)
+    void AttachChildren();              // (3)
+    void HorizontalMerge();             // (4)
+    void KillEmptyNodes();              // (5)
+    void VerticalMerge();               // (6)
 
 private:
 
