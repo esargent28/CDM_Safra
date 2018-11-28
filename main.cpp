@@ -11,6 +11,7 @@
 #include "safra_tree.h"
 
 #include <iostream>
+#include <cstdint>
 
 // ============= Helper methods to implement Safra's algorithm ============== //
 

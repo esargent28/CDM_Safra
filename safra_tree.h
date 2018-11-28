@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <set>
 #include <iostream>
+#include <cstdint>
+
+#include "safra_node.h"
 
 class SafraTree {
 public:
@@ -30,26 +33,24 @@ public:
     void VerticalMerge();                // (6)
 
 private:
-    typedef std::vector<int64_t> label_list_t;
-
-    // Private helper functions
-    label_list_t MakeLabelList(std::set<int> states, const int &max_state);
-
-    // Set operations using our label list implementation
-    label_list_t Union(label_list_t L1, label_list_t L2);
-    label_list_t Complement(label_list_t L);
-    label_list_t Intersection(label_list_t L1, label_list_t L2);
-    label_list_t Difference(label_list_t L1, label_list_t L2);
-    bool Contains(label_list_t L, const int &i);
-
     // Member variables representing Buchi automaton
-    label_list_t initial_states;
-    label_list_t final_states;
-    int num_states;
+    int64_t initial_states_;
+    int64_t final_states_;
+    int num_states_;
+    std::vector<std::unordered_map<char, std::set<int>>> transition_rule_;
+    SafraNode *root_;
 
-    std::unordered_map<int, std::unordered_map<char, int>> transition_rule;
-    // TODO: make data structure for single node, put root node ptr here
+    // Private helper methods
+    static int64_t MakeBitvector(std::set<int> states);
 
+    // Implementation of set functions using bitvector implementation
+    static int64_t Union(const int64_t &x, const int64_t &y);
+    static int64_t Intersect(const int64_t &x, const int64_t &y);
+    static int64_t Complement(const int64_t &x);
+    static int64_t Difference(const int64_t &x, const int64_t &y);
+    static bool Contains(const int64_t &x, const int &i);
+    static int64_t Insert(const int64_t &x, const int &i);
+    static int64_t Remove(const int64_t &x, const int &i);
 
     static constexpr int BITS_PER_ITEM = 64;
 };

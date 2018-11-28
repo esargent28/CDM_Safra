@@ -13,6 +13,7 @@
 #include <set>
 #include <cassert>
 #include <iostream>
+#include <cstdint>
 
 #include "safra_tree.h"
 
@@ -49,7 +50,7 @@ SafraTree::~SafraTree() {
  * STEP 1: Unmarks all nodes in the Safra tree
  */
 void SafraTree::UnmarkAllNodes() {
-
+    root_->UnmarkAll();
 }
 
 /*
@@ -97,103 +98,48 @@ void SafraTree::VerticalMerge() {
 // ========================= Private helper methods ========================= //
 
 /*
- * Given a set of states and a highest state number, creates a label list
- *   corresponding to the state set
- * REQUIRES: max_state >= max(states)
+ * Given a set of states (which is a subset of {0, 1, ..., 63}), creates a
+ *   bitvector where state i is in the set if and only if the ith bit of the
+ *   resulting bitvector is 1
  */
-SafraTree::label_list_t SafraTree::MakeLabelList(std::set<int> states,
-        const int &max_state) {
+int64_t SafraTree::MakeBitvector(std::set<int> states) {
 
-    label_list_t L;
-    return L;
+    int64_t bitvector = 0;
+
+    for (int state : states) {
+        bitvector |= (1 << state);
+    }
+
+    return bitvector;
 }
 
 
 // ============ Set operations for our label list implementation ============ //
 
-
-/*
- * Union of L1 and L2 is done via bitwise OR of the bitvectors
- */
-SafraTree::label_list_t SafraTree::Union(label_list_t L1, label_list_t L2) {
-
-    assert(L1.size() == L2.size());
-
-    label_list_t L_union;
-
-    for (size_t i = 0; i < L1.size(); i++) {
-        int64_t x1 = L1[i];
-        int64_t x2 = L2[i];
-
-        L_union.push_back(x1 | x2);
-    }
-
-    return L_union;
+int64_t SafraTree::Union(const int64_t &x, const int64_t &y) {
+    return x | y;
 }
 
-
-/*
- * Complement is done with bitwise NOT of the bitvector
- */
-SafraTree::label_list_t SafraTree::Complement(label_list_t L) {
-
-    label_list_t L_complement;
-
-    for (int64_t x : L) {
-        L_complement.push_back(~x);
-    }
-
-    return L_complement;
+int64_t SafraTree::Intersect(const int64_t &x, const int64_t &y) {
+    return x & y;
 }
 
-
-/*
- * Intersection is done with bitwise AND of the bitvectors
- */
-SafraTree::label_list_t SafraTree::Intersection(label_list_t L1, label_list_t L2) {
-
-    assert(L1.size() == L2.size());
-
-    label_list_t L_intersect;
-
-    for (size_t i = 0; i < L1.size(); i++) {
-        int64_t x1 = L1[i];
-        int64_t x2 = L2[i];
-
-        L_intersect.push_back(x1 & x2);
-    }
-
-    return L_intersect;
+int64_t SafraTree::Complement(const int64_t &x) {
+    return ~x;
 }
 
-
-/*
- * Difference is done with bitwise AND and NOT of the bitvectors (L1 & (~L2))
- */
-SafraTree::label_list_t SafraTree::Difference(label_list_t L1, label_list_t L2) {
-
-    assert(L1.size() == L2.size());
-
-    label_list_t L_diff;
-
-    for (size_t i = 0; i < L1.size(); i++) {
-        int64_t x1 = L1[i];
-        int64_t x2 = L2[i];
-
-        L_diff.push_back(x1 & (~x2));
-    }
-
-    return L_diff;
+int64_t SafraTree::Difference(const int64_t &x, const int64_t &y) {
+    return x & (~y);
 }
 
+bool SafraTree::Contains(const int64_t &x, const int &i) {
+    return ((x << i) & 1) == 1;
+}
 
-/*
- * Checking for inclusion is done by checking if the ith bit is 1
- */
-bool SafraTree::Contains(label_list_t L, const int &i) {
+int64_t SafraTree::Insert(const int64_t &x, const int &i) {
+    return x | (1 << i);
+}
 
-    int outer_index = i / SafraTree::BITS_PER_ITEM;
-    int inner_index = i % SafraTree::BITS_PER_ITEM;
-    
-    return (((L[outer_index] << inner_index) & 1) == 1);
+int64_t SafraTree::Remove(const int64_t &x, const int &i) {
+    return x & (~(1 << i));
 }
