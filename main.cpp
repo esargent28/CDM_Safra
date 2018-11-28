@@ -13,6 +13,29 @@
 #include <iostream>
 #include <cstdint>
 
+/*
+ *  Overall algorithm logic: 
+ *  
+ *  T0 = initial Safra tree based on automaton input
+ *  tree_set = {T0}
+ *  transition_set = {}
+ *  tree_queue = [T0]
+ *  deterministic automaton has state T
+ *
+ *  while tree queue is not empty:
+ *      T = tree_queue.front();
+ *      for c in alphabet:
+ *          T' = safra_transition(T, c)
+ *          if (T' not in tree_set):
+ *              tree_set.insert(T')
+ *              tree_queue.push(T')
+ *          transition_set.insert(T,c -> T')
+ *  
+ *  Determine Rabin pairs based on trees in tree_set
+ *  Return automaton based on tree_set, transition_set, and Rabin pairs
+ */
+
+
 // ============= Helper methods to implement Safra's algorithm ============== //
 
 
