@@ -57,7 +57,7 @@ void SafraTree::UnmarkAllNodes() {
  * STEP 2: For every node in the tree, replaces the label set according to the
  *   automaton's transition rules
  */
-void SafraTree::UpdateStateSets(const char &c) {
+void SafraTree::UpdateStateSets(const int &c) {
 
 }
 
@@ -114,6 +114,10 @@ int64_t SafraTree::MakeBitvector(std::set<int> states) {
 }
 
 
+int64_t SafraTree::Transition(const int &state, const int &character) {
+    return transition_rule_[state][character];
+}
+
 // ========================================================================== //
 // ======================= SAFRA NODE IMPLEMENTATION ======================== //
 // ========================================================================== //
@@ -165,7 +169,7 @@ std::vector<SafraTree::SafraNode *> SafraTree::SafraNode::GetChildren() {
     return children_;
 }
 
-void SafraTree::SafraNode::AppendNewChild(SafraNode *child) {
+void SafraTree::SafraNode::AppendChild(SafraNode *child) {
     children_.push_back(child);
 }
 
@@ -189,8 +193,29 @@ void SafraTree::SafraNode::UnmarkAll() {
 }
 
 
+/*
+ * Safra's Algorithm Step 2: Transitioning State Sets
+ *   For the current node N, replaces N's state set with its out-neighbors
+ *   according to the transition rule.
+ */
+void SafraTree::SafraNode::TransitionStates(const int &c) {
 
-// ============ Set operations for our label list implementation ============ //
+    int64_t new_states = 0;
+
+    for (int i = 0; i < tree_->num_states_; i++) {
+        if ((states_ << i) & 1 == 1) {
+            new_states = tree_->Union(new_states, tree_->Transition(i, c));
+        }
+    }
+
+    SetStates(new_states);
+    for (SafraNode *child : children_) {
+        child->TransitionStates(c);
+    }
+}
+
+
+// ============== Set operations for label list implementation ============== //
 
 int64_t SafraTree::Union(const int64_t &x, const int64_t &y) {
     return x | y;
