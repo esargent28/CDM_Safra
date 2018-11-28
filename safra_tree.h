@@ -12,9 +12,8 @@
 #include <unordered_map>
 #include <set>
 #include <iostream>
+#include <string>
 #include <cstdint>
-
-#include "safra_node.h"
 
 class SafraTree {
 public:
@@ -33,11 +32,50 @@ public:
     void VerticalMerge();                // (6)
 
 private:
+
+    // ===== Safra node class definition =====
+
+    class SafraNode {
+    public:
+
+        // Constructor & Destructor
+        SafraNode(const int64_t &states, const int &label, const bool &marked);
+        ~SafraNode();
+
+
+        // Access methods for member variables
+        int64_t GetStates();
+        void SetStates(const int64_t &states);
+
+        int GetLabel();
+        void SetLabel(const int &label);
+
+        bool IsMarked();
+        void SetMarked(const bool &marked);
+
+        std::vector<SafraNode *> GetChildren();
+        void AppendNewChild(SafraNode *child);
+        void EraseChild(const int &i);
+
+
+        // Methods for steps of Safra's Algorithm
+        void UnmarkAll();
+
+    private:
+        // Member variables
+        int64_t states_;
+        int label_;
+        bool marked_;
+        std::vector<SafraNode *> children_;
+    };
+
+
     // Member variables representing Buchi automaton
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::unordered_map<char, std::set<int>>> transition_rule_;
+    std::unordered_map<std::string, std::set<int>> transition_rule_;
+
     SafraNode *root_;
 
     // Private helper methods

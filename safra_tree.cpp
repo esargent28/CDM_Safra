@@ -114,6 +114,82 @@ int64_t SafraTree::MakeBitvector(std::set<int> states) {
 }
 
 
+// ========================================================================== //
+// ======================= SAFRA NODE IMPLEMENTATION ======================== //
+// ========================================================================== //
+
+
+// =================== SafraNode Constructor & Destructor =================== //
+
+SafraTree::SafraNode::SafraNode(const int64_t &states, const int &label,
+    const bool &marked) {
+
+    states_ = states;
+    label_ = label;
+    marked_ = marked;
+}
+
+
+SafraTree::SafraNode::~SafraNode() {
+
+}
+
+
+// ============== Access methods for SafraNode member variables ============= //
+
+int64_t SafraTree::SafraNode::GetStates() {
+    return states_;
+}
+
+void SafraTree::SafraNode::SetStates(const int64_t &states) {
+    states_ = states;
+}
+
+int SafraTree::SafraNode::GetLabel() {
+    return label_;
+}
+
+void SafraTree::SafraNode::SetLabel(const int &label) {
+    label_ = label;
+}
+
+bool SafraTree::SafraNode::IsMarked() {
+    return marked_;
+}
+
+void SafraTree::SafraNode::SetMarked(const bool &marked) {
+    marked_ = marked;
+}
+
+std::vector<SafraTree::SafraNode *> SafraTree::SafraNode::GetChildren() {
+    return children_;
+}
+
+void SafraTree::SafraNode::AppendNewChild(SafraNode *child) {
+    children_.push_back(child);
+}
+
+void SafraTree::SafraNode::EraseChild(const int &i) {
+    children_.erase(children_.begin() + i);
+}
+
+
+// ============== Node methods for steps of Safra's Algorithm =============== //
+
+/*
+ * Safra's Algorithm Step 1: Unmarking All Nodes
+ *  For the current node N, unmarks N and all nodes in the subtree rooted at N
+ */
+void SafraTree::SafraNode::UnmarkAll() {
+
+    SetMarked(false);
+    for (SafraNode *child : children_) {
+        child->UnmarkAll();
+    }
+}
+
+
+
 // ============ Set operations for our label list implementation ============ //
 
 int64_t SafraTree::Union(const int64_t &x, const int64_t &y) {
