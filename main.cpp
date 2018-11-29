@@ -17,8 +17,8 @@
  *  Overall algorithm logic: 
  *  
  *  T0 = initial Safra tree based on automaton input
- *  tree_set = {T0}
- *  transition_set = {}
+ *  tree_set = { T0 }
+ *  transition_set = { }
  *  tree_queue = [T0]
  *  deterministic automaton has state T
  *
