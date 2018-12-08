@@ -61,6 +61,34 @@ void SafraTree::UpdateStateSets(const int &c) {
 
 }
 
+void SafraTree::SafraNode::CreateChild(int64_t final_states) {
+    int64_t parent_states = GetStates();
+
+    int64_t child_states = Union(parent_states, final_states);
+
+    if (child_states == EmptySet)
+        return;
+    
+    int new_label = GetNewLabel(); // GetNewLabel needs to be implemented
+    
+    bool child_is_marked = true;
+
+    SafraNode *child_node = new SafraNode(child_states, new_label, marked);
+
+    AppendChild(child_node);
+}
+
+void SafraTree::SafraNode::AttachChildrenToAllNodes(int64_t final_states) {
+
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    for (int i = 0; i < children.size(); i++) {
+        (*(children[i])).CreateChild(final_states);
+    }
+
+    CreateChild(final_states);
+}
+
 /*
  * STEP 3: For every node v, if v's label set shares at least one state with
  *   the final states, create a new rightmost child u to v. Set the label set
@@ -69,6 +97,43 @@ void SafraTree::UpdateStateSets(const int &c) {
  */
 void SafraTree::AttachChildren() {
 
+    int64_t final_states = GetFinalStates(); // need to figure out how this is going to get access
+                                             // to the final states
+
+    // also need to figure out how to get the head node too
+    GetHeadNode().AttachChildrenToAllNodes(final_states);
+}
+
+void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
+
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    int64_t seen_states = EmptySet;
+
+    for (int i = 0; i < children.length(); i++) {
+        SafraNode child = *(children[i]);
+
+        int64_t child_states = child.GetStates();
+
+        int64_t new_child_states = Difference(child_states, seen_states);
+        
+        seen_states = Union(seen_states, child_states);
+
+        child.SetStates(new_child_states);
+    }
+}
+
+void SafraTree::SafraNode::HorizontalMergeAllNodes(){
+
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    for (int i = 0; i < children.length(); i++) {
+        SafraNode child = *(children[i]);
+
+        child.HorizontalMergeAllNodes();
+    }
+
+    HorizontalMergeNodeLevel();
 }
 
 /*
@@ -76,6 +141,29 @@ void SafraTree::AttachChildren() {
  *   appear in nodes to the left of u.
  */
 void SafraTree::HorizontalMerge() {
+    GetHeadNode().HorizontalMergeAllNodes();
+}
+
+void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
+
+}
+
+void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
+    
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    int i = 0;
+
+    while (i < children.size()) {
+        SafraNode child = *(children[i]);
+
+        if (child.GetStates() == EmptySet) {
+            EraseChild(i);
+        } else {
+            child.KillEmptyNodesNodeLevel();
+            i++;
+        }
+    }
 
 }
 
@@ -83,6 +171,44 @@ void SafraTree::HorizontalMerge() {
  * STEP 5: Remove all nodes with empty label sets.
  */
 void SafraTree::KillEmptyNodes() {
+    GetHeadNode().KillEmptyNodes();
+}
+
+void SafraTree::SafraNode::VerticalMergeNodeLevel() {
+
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    int64_t all_children_states = EmptySet;
+
+    for (int i = 0; i < children.size(); i++) {
+        SafraNode child = *(children[i]);
+
+        all_children_states = Union(all_children_states, child.GetStates());
+    }
+
+    int64_t this_node_states = GetStates();
+
+    if (this_node_states == all_children_states) {
+        
+        SetMarked(true);
+
+        int i = 0;
+
+        while (i < children.size()) {
+            SafraNode child = *(children[i]);
+            EraseChild(i);
+        }
+    }
+
+    } else {
+
+        for (int i = 0; i < children.size(); i++) {
+            SafraNode child = *(children[i]);
+
+            child.VerticalMergeNodeLevel();
+        }
+
+    }
 
 }
 
@@ -91,7 +217,7 @@ void SafraTree::KillEmptyNodes() {
  *   children's label sets
  */
 void SafraTree::VerticalMerge() {
-
+    GetHeadNode().VerticalMergeNodeLevel();
 }
 
 
@@ -244,3 +370,5 @@ int64_t SafraTree::Insert(const int64_t &x, const int &i) {
 int64_t SafraTree::Remove(const int64_t &x, const int &i) {
     return x & (~(1 << i));
 }
+
+const int64_t SafraTree::EmptySet = 0;
