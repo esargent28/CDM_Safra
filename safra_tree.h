@@ -14,6 +14,7 @@
 #include <iostream>
 #include <string>
 #include <cstdint>
+#include <queue>
 
 class SafraTree {
 public:
@@ -56,10 +57,18 @@ private:
         void AppendChild(SafraNode *child);
         void EraseChild(const int &i);
 
+        SafraTree *GetTree();
+
 
         // Methods for steps of Safra's Algorithm
         void UnmarkAll();
         void TransitionStates(const int &c);
+        void CreateChild(int64_t final_states);
+        void AttachChildrenToAllNodes(int64_t final_states);
+        void HorizontalMergeNodeLevel();
+        void HorizontalMergeAllNodes();
+        void KillEmptyNodesNodeLevel();
+        void VerticalMergeNodeLevel();
 
     private:
         // Member variables
@@ -74,26 +83,34 @@ private:
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::vector<int64_t>> transition_rule_;
+    std::vector<std::vector<int64_t> > transition_rule_;
 
     SafraNode *root_;
+    std::priority_queue<int> *unused_labels_;
+
+    // root access method
+    SafraNode *GetRoot();
 
     // Private helper methods
     int64_t Transition(const int &state, const int &character);
+    int GetNewLabel();
+    void RemoveLabel(int label);
+    int64_t GetFinalStates();
 
     // Static helper methods
     int64_t MakeBitvector(std::set<int> states);
 
     // Implementation of set functions using bitvector implementation
-    int64_t Union(const int64_t &x, const int64_t &y);
-    int64_t Intersect(const int64_t &x, const int64_t &y);
-    int64_t Complement(const int64_t &x);
-    int64_t Difference(const int64_t &x, const int64_t &y);
-    bool Contains(const int64_t &x, const int &i);
-    int64_t Insert(const int64_t &x, const int &i);
-    int64_t Remove(const int64_t &x, const int &i);
+    static int64_t Union(const int64_t &x, const int64_t &y);
+    static int64_t Intersect(const int64_t &x, const int64_t &y);
+    static int64_t Complement(const int64_t &x);
+    static int64_t Difference(const int64_t &x, const int64_t &y);
+    static bool Contains(const int64_t &x, const int &i);
+    static int64_t Insert(const int64_t &x, const int &i);
+    static int64_t Remove(const int64_t &x, const int &i);
 
-    static constexpr int BITS_PER_ITEM = 64;
+    //static /*constexpr*/ int BITS_PER_ITEM;
+    //static /*constexpr*/ int64_t EMPTY_SET;
 };
 
 

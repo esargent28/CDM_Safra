@@ -14,8 +14,13 @@
 #include <cassert>
 #include <iostream>
 #include <cstdint>
+#include <queue>
 
 #include "safra_tree.h"
+
+// Constants
+int BITS_PER_ITEM = 64;
+int64_t EMPTY_SET = 0;
 
 
 // ========== Standard constructor, copy constructor, & destructor ========== //
@@ -27,6 +32,18 @@
  */
 SafraTree::SafraTree() {
 
+    //BITS_PER_ITEM = 64;
+    //EMPTY_SET = 0;
+
+    int n;
+
+    unused_labels_ = new std::priority_queue<int>;
+
+    //initialize priority queue that contains every number from 
+    // 2-2n (we assume 1 is the label of the first node)
+    for (int i = 0; i < 2 * n; i++) {
+        unused_labels_->push(i);
+    }
 }
 
 /*
@@ -41,6 +58,8 @@ SafraTree::SafraTree(SafraTree *other) {
  */
 SafraTree::~SafraTree() {
 
+    // free priority queue
+    delete(unused_labels_);
 }
 
 
@@ -58,7 +77,9 @@ void SafraTree::UnmarkAllNodes() {
  *   automaton's transition rules
  */
 void SafraTree::UpdateStateSets(const int &c) {
+    SafraNode *head = GetRoot();
 
+    head->TransitionStates(c);
 }
 
 void SafraTree::SafraNode::CreateChild(int64_t final_states) {
@@ -66,14 +87,14 @@ void SafraTree::SafraNode::CreateChild(int64_t final_states) {
 
     int64_t child_states = Union(parent_states, final_states);
 
-    if (child_states == EmptySet)
+    if (child_states == EMPTY_SET)
         return;
     
-    int new_label = GetNewLabel(); // GetNewLabel needs to be implemented
+    int new_label = GetTree()->GetNewLabel();
     
     bool child_is_marked = true;
 
-    SafraNode *child_node = new SafraNode(child_states, new_label, marked);
+    SafraNode *child_node = new SafraNode(child_states, new_label, child_is_marked);
 
     AppendChild(child_node);
 }
@@ -101,16 +122,16 @@ void SafraTree::AttachChildren() {
                                              // to the final states
 
     // also need to figure out how to get the head node too
-    GetHeadNode().AttachChildrenToAllNodes(final_states);
+    GetRoot()->AttachChildrenToAllNodes(final_states);
 }
 
 void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
 
     std::vector<SafraTree::SafraNode *> children = GetChildren();
 
-    int64_t seen_states = EmptySet;
+    int64_t seen_states = EMPTY_SET;
 
-    for (int i = 0; i < children.length(); i++) {
+    for (int i = 0; i < children.size(); i++) {
         SafraNode child = *(children[i]);
 
         int64_t child_states = child.GetStates();
@@ -127,7 +148,7 @@ void SafraTree::SafraNode::HorizontalMergeAllNodes(){
 
     std::vector<SafraTree::SafraNode *> children = GetChildren();
 
-    for (int i = 0; i < children.length(); i++) {
+    for (int i = 0; i < children.size(); i++) {
         SafraNode child = *(children[i]);
 
         child.HorizontalMergeAllNodes();
@@ -141,11 +162,7 @@ void SafraTree::SafraNode::HorizontalMergeAllNodes(){
  *   appear in nodes to the left of u.
  */
 void SafraTree::HorizontalMerge() {
-    GetHeadNode().HorizontalMergeAllNodes();
-}
-
-void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
-
+    GetRoot()->HorizontalMergeAllNodes();
 }
 
 void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
@@ -157,7 +174,7 @@ void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
     while (i < children.size()) {
         SafraNode child = *(children[i]);
 
-        if (child.GetStates() == EmptySet) {
+        if (child.GetStates() == EMPTY_SET) {
             EraseChild(i);
         } else {
             child.KillEmptyNodesNodeLevel();
@@ -171,14 +188,14 @@ void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
  * STEP 5: Remove all nodes with empty label sets.
  */
 void SafraTree::KillEmptyNodes() {
-    GetHeadNode().KillEmptyNodes();
+    GetRoot()->KillEmptyNodesNodeLevel();
 }
 
 void SafraTree::SafraNode::VerticalMergeNodeLevel() {
 
     std::vector<SafraTree::SafraNode *> children = GetChildren();
 
-    int64_t all_children_states = EmptySet;
+    int64_t all_children_states = EMPTY_SET;
 
     for (int i = 0; i < children.size(); i++) {
         SafraNode child = *(children[i]);
@@ -200,7 +217,7 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
         }
     }
 
-    } else {
+    else {
 
         for (int i = 0; i < children.size(); i++) {
             SafraNode child = *(children[i]);
@@ -217,7 +234,7 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
  *   children's label sets
  */
 void SafraTree::VerticalMerge() {
-    GetHeadNode().VerticalMergeNodeLevel();
+    GetRoot()->VerticalMergeNodeLevel();
 }
 
 
@@ -239,9 +256,27 @@ int64_t SafraTree::MakeBitvector(std::set<int> states) {
     return bitvector;
 }
 
-
 int64_t SafraTree::Transition(const int &state, const int &character) {
     return transition_rule_[state][character];
+}
+
+int SafraTree::GetNewLabel() {
+    int new_label = unused_labels_->top();
+    unused_labels_->pop();
+
+    return new_label;
+}
+
+void SafraTree::RemoveLabel(int label) {
+    unused_labels_->push(label);
+}
+
+int64_t SafraTree::GetFinalStates() {
+    return final_states_;
+}
+
+SafraTree::SafraNode *SafraTree::GetRoot() {
+    return root_;
 }
 
 // ========================================================================== //
@@ -300,7 +335,18 @@ void SafraTree::SafraNode::AppendChild(SafraNode *child) {
 }
 
 void SafraTree::SafraNode::EraseChild(const int &i) {
+
+    int this_child_label = children_[i]->GetLabel();
+
+    GetTree()->RemoveLabel(this_child_label);
+
+    delete(children_[i]);
+
     children_.erase(children_.begin() + i);
+}
+
+SafraTree *SafraTree::SafraNode::GetTree() {
+    return tree_;
 }
 
 
@@ -370,5 +416,3 @@ int64_t SafraTree::Insert(const int64_t &x, const int &i) {
 int64_t SafraTree::Remove(const int64_t &x, const int &i) {
     return x & (~(1 << i));
 }
-
-const int64_t SafraTree::EmptySet = 0;
