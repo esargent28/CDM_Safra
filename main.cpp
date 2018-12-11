@@ -11,7 +11,22 @@
 #include "safra_tree.h"
 
 #include <iostream>
+#include <fstream>
 #include <cstdint>
+
+#include <string.h>
+
+// Definitions & constants for I/O purposes
+#define BUFFER_SIZE 100
+
+#define NUM_STATES_TAG "# Number of states"
+#define ALPHABET_SIZE_TAG "# Alphabet size"
+#define NUM_TRANSITIONS_TAG "# Number of transitions"
+#define BEGIN_TRANSITIONS_TAG "# begin transitions"
+#define END_TRANSITIONS_TAG "# end transitions"
+#define INITIAL_STATES_TAG "# Buechi initial"
+#define FINAL_STATES_TAG "# Buechi final"
+#define EOF_TAG "# Buechi eof"
 
 /*
  *  Overall algorithm logic: 
@@ -41,17 +56,66 @@
 
 
 
-
 // ==================== Main method for Safra's algorithm =================== //
 
 int main(int argc, const char *argv[]) {
 
-    std::cout << "# args: " << argc << std::endl;
-    std::cout << std::endl;
+    SafraTree *t = new SafraTree();
 
-    for (int i = 0; i < argc; i++) {
-        std::cout << "Argument #" << i << ": " << argv[i] << std::endl;
+    std::fstream infile, outfile;
+    char buffer[100];
+
+    if (argc != 3) {
+        std::cout << "ERROR: Incorrect argument format. ";
+        std::cout << "Usage: ./safra <ipnutfile> <outputfile>  ";
+        std::cout << "(file format in info.txt)" << std::endl;
+        return 1;
     }
+
+    std::cout << "Extracting Buechi automaton from file " << argv[1];
+    std::cout << "..." << std::endl;
+
+    // ========================= PROCESS INPUT FILE ========================= //
+
+    infile.open(argv[1], std::ios::in);
+    if (!infile.is_open()) {
+        std::cout << "ERROR: Improper input filename." << std::endl;
+        return 1;
+    }
+
+    while (!infile.fail()) {
+        infile.getline(buffer, BUFFER_SIZE, '\n');
+        std::cout << buffer << std::endl;
+
+
+
+    }
+
+    infile.close();
+
+    std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
+
+    // ======================= RUN SAFRA'S ALGORITHM ======================== //
+
+
+
+
+
+
+    // ======================== PROCESS OUTPUT FILE ========================= //
+
+    std::cout << "Safra's algorithm done. Writing result to file " << argv[2];
+    std::cout << "..." << std::endl;
+
+    // Open output file
+    outfile.open(argv[2], std::ios::out);
+    if (!outfile.is_open()) {
+        std::cout << "ERROR: Improper output filename." << std::endl;
+        return 1;
+    }
+
+    // Close output file
+    outfile.close();
 
     return 0;
 }
