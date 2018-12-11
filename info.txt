@@ -1,0 +1,94 @@
+/* ************************************************************************* *
+ *                                                                           *
+ *                15-354: Computational Discrete Mathematics                 *
+ *                     Final Project: Safra's Algorithm                      *
+ *             Erik Sargent (esargent), Vaidehi Srinivas (vaidehis)          *
+ *                                                                           *
+ *            info.txt - general info on implementation & how to use         *
+ *                                                                           *
+ * ************************************************************************* */
+
+// ========================================================================= //
+// ================================== USAGE ================================ //
+// ========================================================================= //
+
+To run our implementation on a single input file / machine:
+ - First, if the code has not already been compiled, run 'make' to compile the
+    command-line application.
+ - Then, run './safra <inputfilename> <outputfilename>' to read the Buechi
+    automaton from <inputfilename>, compute the corresponding Rabin automaton,
+	and write said Rabin automaton to <outputfilename>.
+ 
+To run our implementation on the test suite:
+ - 
+ 
+// ========================================================================= //
+// =========================== INPUT FILE FORMAT =========================== //
+// ========================================================================= //
+
+  The input file read by the command-line application should specify the
+    following characteristics of the Buechi automaton:
+	 1) Number of states
+	 2) Alphabet size
+	 3) Number of transitions
+	 4) All transitions
+	 5) Initial states
+	 6) Final states
+ 
+Between the dashed lines is an example to demonstrate the desired format:
+
+------------
+# Number of states
+2
+# Alphabet size
+2
+# Number of transitions
+4
+# begin transitions
+1  1  1
+1  2  1
+1  1  2
+2  1  2
+# end transitions
+# Buechi initial
+1
+# Buechi final
+2 
+# Buechi eof
+------------
+
+If the input file does not match the deisired format, the command-line
+  application will not accept it.
+
+// ========================================================================= //
+// ========================== OUTPUT FILE FORMAT =========================== //
+// ========================================================================= //
+
+  The output file written by the command-line application will specify the
+    following characteristics of the corresponding Rabin automaton:
+	 1) Number of states
+	 2) Alphabet size
+	 3) Number of transitions
+	 4) All transitions
+	 5) Initial state
+	 6) Rabin pairs
+
+Between the dashed lines is an example to demonstrate the format:
+
+------------
+# Number of states
+
+# Alphabet size
+
+# Number of transitions
+# begin transitions
+
+# end transitions
+# Rabin initial
+
+# Rabin pairs
+
+# Rabin eof
+------------
+
+

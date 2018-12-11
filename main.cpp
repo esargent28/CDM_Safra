@@ -60,7 +60,7 @@ std::fstream infile, outfile;
  */
 
 
-// ============= Helper methods to implement Safra's algorithm ============== //
+// ============== Helper methods for reading Buechi automaton =============== //
 
 /*
  * Constructs the transition vector based on the given num_states and
@@ -148,7 +148,11 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     state = (found_num_transitions ? INVALID : READ_NUM_TRANSITIONS);
                 }
                 else if (!line.compare(BEGIN_TRANSITIONS_TAG)) {
-                    state = (found_transitions ? INVALID : READ_TRANSITIONS);
+                    if (!found_transitions && found_num_states &&
+                        found_num_transitions && found_alphabet_size) {
+                        state = READ_TRANSITIONS;
+                    }
+                    else { state = INVALID; }
                 }
                 else if (!line.compare(INITIAL_STATES_TAG)) {
                     state = (found_initial_states ? INVALID : READ_INITIAL_STATES);
@@ -162,14 +166,9 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                         found_num_transitions && found_final_states) {
                         state = DONE;
                     }
-                    else {
-                        state = INVALID;
-                    }
+                    else { state = INVALID; }
                 }
-                else if (!line.compare(END_TRANSITIONS_TAG)) {
-                    // ERROR: Should've seen a BEGIN_TRANSITIONS_TAG first
-                    state = INVALID;
-                }
+                else if (!line.compare(END_TRANSITIONS_TAG)) { state = INVALID; }
                 break;
 
             // READ_NUM_STATES:
@@ -228,9 +227,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                         found_transitions = true;
                         state = WAIT_FOR_TAG;
                     }
-                    else {
-                        state = INVALID;
-                    }
+                    else { state = INVALID; }
                 }
                 else {
                     int pre_state = -1, character = -1, post_state = -1;
@@ -238,9 +235,13 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> character;
                     linestream >> post_state;
 
-                    if (pre_state > 0 && character > 0 && post_state > 0) {
+                    if (pre_state > 0 && pre_state <= num_states &&
+                        character > 0 && character <= alphabet_size &&
+                        post_state > 0 && post_state <= num_states) {
+                        // Switch from 1-indexing to 0-indexing
                         InsertTransition(--pre_state, --character, --post_state, transitions);
                     }
+                    else { state = INVALID; }
                     transition_count++;
                 }
                 break;
@@ -274,7 +275,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> i;
                     while (i > 0 && i <= num_states) {
                         i--; // switch from 1-indexing to 0-indexing
-                        final_states = final_states | (1 << i);
+                        final_states |= (1 << i);
                         i = -1;
                         linestream >> i;
                     }
@@ -287,19 +288,36 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                 break;
         }
 
-        if (infile.fail()) {
-            state = INVALID;
-        }
+        if (infile.fail()) { state = INVALID; }
     }
     return (state == DONE);
+}
+
+// ============== Helper methods for running Safra's Algorithm ============== //
+
+/*
+ * Runs Safra's algorithm on the provided Buechi automaton.
+ */
+void RunSafra() {
+
+}
+
+
+// ====== Helper methods for writing Rabin automaton to output stream ======= //
+
+/*
+ * Writes the contents of the computed Rabin automaton to the specified output
+ *   file stream.
+ */
+void WriteRabin() {
+
+    outfile << "Placeholder output" << std::endl;
 }
 
 
 // ==================== Main method for Safra's algorithm =================== //
 
 int main(int argc, const char *argv[]) {
-
-    SafraTree *t = new SafraTree();
 
     if (argc != 3) {
         std::cout << "ERROR: Incorrect argument format. ";
@@ -330,19 +348,20 @@ int main(int argc, const char *argv[]) {
         std::cout << "Please look to info.txt for input file format.\n";
         return 1;
     }
-    std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
 
     infile.close();
 
     // ======================= RUN SAFRA'S ALGORITHM ======================== //
 
-    
+    std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
+
+    RunSafra();    
 
     std::cout << "num_states=" << num_states << ", alphabet_size=" << alphabet_size << "\n";
     std::cout << "initial_states=" << std::hex << initial_states;
     std::cout << ", final_states=" << std::hex << final_states << "\n";
 
-    // ======================== PROCESS OUTPUT FILE ========================= //
+    // ======================= WRITE TO OUTPUT FILE ========================= //
 
     std::cout << "Safra's algorithm done. Writing result to file " << argv[2];
     std::cout << "..." << std::endl;
@@ -353,6 +372,8 @@ int main(int argc, const char *argv[]) {
         std::cout << "ERROR: Improper output filename." << std::endl;
         return 1;
     }
+
+    WriteRabin();
 
     // Close output file
     outfile.close();
