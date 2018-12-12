@@ -29,7 +29,13 @@
 #define END_TRANSITIONS_TAG "# end transitions"
 #define INITIAL_STATES_TAG "# Buechi initial"
 #define FINAL_STATES_TAG "# Buechi final"
-#define EOF_TAG "# Buechi eof"
+#define BUECHI_EOF_TAG "# Buechi eof"
+
+#define RABIN_INFILE_TAG "# Buechi filename"
+#define RABIN_INITIAL_STATE_TAG "# Rabin initial"
+#define BEGIN_RABIN_PAIRS_TAG "# begin Rabin pairs"
+#define END_RABIN_PAIRS_TAG "# end Rabin pairs"
+#define RABIN_EOF_TAG "# Rabin eof"
 
 // Buffer to hold 
 char buffer[100];
@@ -60,7 +66,7 @@ std::fstream infile, outfile;
  */
 
 
-// ============= Helper methods to implement Safra's algorithm ============== //
+// ============== Helper methods for reading Buechi automaton =============== //
 
 /*
  * Constructs the transition vector based on the given num_states and
@@ -148,7 +154,11 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     state = (found_num_transitions ? INVALID : READ_NUM_TRANSITIONS);
                 }
                 else if (!line.compare(BEGIN_TRANSITIONS_TAG)) {
-                    state = (found_transitions ? INVALID : READ_TRANSITIONS);
+                    if (!found_transitions && found_num_states &&
+                        found_num_transitions && found_alphabet_size) {
+                        state = READ_TRANSITIONS;
+                    }
+                    else { state = INVALID; }
                 }
                 else if (!line.compare(INITIAL_STATES_TAG)) {
                     state = (found_initial_states ? INVALID : READ_INITIAL_STATES);
@@ -156,20 +166,15 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                 else if (!line.compare(FINAL_STATES_TAG)) {
                     state = (found_final_states ? INVALID : READ_FINAL_STATES);
                 }
-                else if (!line.compare(EOF_TAG)) {
+                else if (!line.compare(BUECHI_EOF_TAG)) {
                     if (found_num_states && found_alphabet_size &&
                         found_initial_states && found_transitions &&
                         found_num_transitions && found_final_states) {
                         state = DONE;
                     }
-                    else {
-                        state = INVALID;
-                    }
+                    else { state = INVALID; }
                 }
-                else if (!line.compare(END_TRANSITIONS_TAG)) {
-                    // ERROR: Should've seen a BEGIN_TRANSITIONS_TAG first
-                    state = INVALID;
-                }
+                else if (!line.compare(END_TRANSITIONS_TAG)) { state = INVALID; }
                 break;
 
             // READ_NUM_STATES:
@@ -228,9 +233,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                         found_transitions = true;
                         state = WAIT_FOR_TAG;
                     }
-                    else {
-                        state = INVALID;
-                    }
+                    else { state = INVALID; }
                 }
                 else {
                     int pre_state = -1, character = -1, post_state = -1;
@@ -238,9 +241,13 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> character;
                     linestream >> post_state;
 
-                    if (pre_state > 0 && character > 0 && post_state > 0) {
+                    if (pre_state > 0 && pre_state <= num_states &&
+                        character > 0 && character <= alphabet_size &&
+                        post_state > 0 && post_state <= num_states) {
+                        // Switch from 1-indexing to 0-indexing
                         InsertTransition(--pre_state, --character, --post_state, transitions);
                     }
+                    else { state = INVALID; }
                     transition_count++;
                 }
                 break;
@@ -274,7 +281,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> i;
                     while (i > 0 && i <= num_states) {
                         i--; // switch from 1-indexing to 0-indexing
-                        final_states = final_states | (1 << i);
+                        final_states |= (1 << i);
                         i = -1;
                         linestream >> i;
                     }
@@ -287,19 +294,69 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                 break;
         }
 
-        if (infile.fail()) {
-            state = INVALID;
-        }
+        if (infile.fail()) { state = INVALID; }
     }
     return (state == DONE);
+}
+
+// ============== Helper methods for running Safra's Algorithm ============== //
+
+/*
+ * Runs Safra's algorithm on the provided Buechi automaton.
+ */
+void RunSafra() {
+
+
+
+
+
+}
+
+
+// ====== Helper methods for writing Rabin automaton to output stream ======= //
+
+/*
+ * Writes the contents of the computed Rabin automaton to the specified output
+ *   file stream.
+ */
+void WriteRabin() {
+
+    std::string input_file_name;
+    int num_states, alphabet_size, initial_state, num_transitions;
+    std::vector<std::vector<int>> transitions;
+    std::vector<std::pair<std::set<int>, std::set<int>>> rabin_pairs;
+
+    outfile << "RABIN" << std::endl;
+    outfile << RABIN_INFILE_TAG << std::endl;
+    outfile << input_file_name << std::endl;
+
+    outfile << NUM_STATES_TAG << std::endl;
+    outfile << num_states << std::endl;
+
+    outfile << ALPHABET_SIZE_TAG << std::endl;
+    outfile << alphabet_size << std::endl;
+
+    outfile << NUM_TRANSITIONS_TAG << std::endl;
+    outfile << num_transitions << std::endl;
+
+    outfile << BEGIN_TRANSITIONS_TAG << std::endl;
+    for (int pre_state = 0; pre_state < transitions.size(); pre_state++) {
+        for (int character = 0; character < transitions[pre_state].size(); character++) {
+            int post_state = transitions[pre_state][character];
+
+            outfile << (pre_state + 1) << " " << (character + 1) << " "
+                    << (post_state + 1) << std::endl;
+        }
+    }
+
+    outfile << END_TRANSITIONS_TAG << std::endl;
+
 }
 
 
 // ==================== Main method for Safra's algorithm =================== //
 
 int main(int argc, const char *argv[]) {
-
-    SafraTree *t = new SafraTree();
 
     if (argc != 3) {
         std::cout << "ERROR: Incorrect argument format. ";
@@ -330,19 +387,20 @@ int main(int argc, const char *argv[]) {
         std::cout << "Please look to info.txt for input file format.\n";
         return 1;
     }
-    std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
 
     infile.close();
 
     // ======================= RUN SAFRA'S ALGORITHM ======================== //
 
-    
+    std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
+
+    RunSafra();    
 
     std::cout << "num_states=" << num_states << ", alphabet_size=" << alphabet_size << "\n";
     std::cout << "initial_states=" << std::hex << initial_states;
     std::cout << ", final_states=" << std::hex << final_states << "\n";
 
-    // ======================== PROCESS OUTPUT FILE ========================= //
+    // ======================= WRITE TO OUTPUT FILE ========================= //
 
     std::cout << "Safra's algorithm done. Writing result to file " << argv[2];
     std::cout << "..." << std::endl;
@@ -353,6 +411,8 @@ int main(int argc, const char *argv[]) {
         std::cout << "ERROR: Improper output filename." << std::endl;
         return 1;
     }
+
+
 
     // Close output file
     outfile.close();

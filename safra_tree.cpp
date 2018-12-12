@@ -13,6 +13,8 @@
 #include <set>
 #include <cassert>
 #include <iostream>
+#include <sstream>
+#include <string>
 #include <cstdint>
 #include <queue>
 
@@ -30,20 +32,43 @@ int64_t EMPTY_SET = 0;
  * Standard constructor: creates a Safra tree based on the initial state set of
  *   the Buchi automaton
  */
-SafraTree::SafraTree() {
+SafraTree::SafraTree(int num_states, int alphabet_size,
+    std::vector<std::vector<int64_t>> transition, int64_t initial_states,
+    int64_t final_states) {
 
-    //BITS_PER_ITEM = 64;
-    //EMPTY_SET = 0;
-
-    int n;
+    num_states_ = num_states;
+    transition_rule_ = transition;
+    initial_states_ = initial_states;
+    final_states_ = final_states;
 
     unused_labels_ = new std::priority_queue<int>;
 
-    //initialize priority queue that contains every number from 
-    // 2-2n (we assume 1 is the label of the first node)
-    for (int i = 0; i < 2 * n; i++) {
+    //initialize priority queue that contains every number from 1 to 2*n
+    for (int i = 1; i <= 2*num_states_; i++) {
         unused_labels_->push(i);
     }
+
+    // Create initial node setup
+    if (Intersect(initial_states_, final_states_) == 0) { 
+        // Empty intersection between I and F
+        // => Initial tree is (1 : I)
+        root_ = new SafraNode(initial_states_, GetNewLabel(), false);
+    }
+    else if (Difference(initial_states_, final_states_) == 0) {
+        // I is a subset of F
+        // => Initial tree is (1 : I!)
+        root_ = new SafraNode(initial_states_, GetNewLabel(), true);
+    }
+    else {
+        // Otherwise
+        // => Initial tree is (1 : I, 2 : I n F!)
+
+        root_ = new SafraNode(initial_states_, GetNewLabel(), false);
+        SafraNode *child = new SafraNode(
+            Intersect(initial_states_, final_states), GetNewLabel(), true);
+        root_->AppendChild(child);
+    }
+
 }
 
 /*
@@ -59,7 +84,7 @@ SafraTree::SafraTree(SafraTree *other) {
 SafraTree::~SafraTree() {
 
     // free priority queue
-    delete(unused_labels_);
+    delete unused_labels_;
 }
 
 
@@ -415,4 +440,48 @@ int64_t SafraTree::Insert(const int64_t &x, const int &i) {
 
 int64_t SafraTree::Remove(const int64_t &x, const int &i) {
     return x & (~(1 << i));
+}
+
+// ================ String methods for SafraTree & SafraNode ================ //
+
+/*
+ * Writes out the string representation of a Safra node
+ */
+std::string SafraTree::SafraNode::ToString() {
+    std::ostringstream stream;
+
+    stream << GetLabel() << ":" << GetStates();
+    if (IsMarked()) {
+        stream << "!";
+    }
+    return stream.str();
+}
+
+
+/*
+ * Recursive helper method for writing the string representation of a single
+ *   Safra tree based on a given node's children
+ */
+std::string SafraTree::SafraNode::StringifyChildren() {
+
+    std::ostringstream stream;
+
+    for (SafraNode *child : GetChildren()) {
+        stream << "," << child->ToString();
+    }
+    for (SafraNode *child : GetChildren()) {
+        stream << child->StringifyChildren();
+    }
+    return stream.str();
+}
+
+
+/*
+ * Writes out the string representation of a Safra tree
+ */
+std::string SafraTree::ToString() {
+
+    std::ostringstream stream;
+    stream << "(" << root_->ToString() << root_->StringifyChildren() << ")";
+    return stream.str();
 }
