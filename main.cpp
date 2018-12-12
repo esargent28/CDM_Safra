@@ -304,11 +304,85 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
 /*
  * Runs Safra's algorithm on the provided Buechi automaton.
  */
-void RunSafra() {
+void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
+    int64_t final_states, std::vector<std::vector<int64_t>> transitions) {
+
+    // tree_mapping : (string representation of tree -> label, SafraTree ptr)
+    std::unordered_map<std::string, std::pair<int, SafraTree *>> tree_mapping = {};
+
+    // task_queue contains strings for all trees whose transitions have not
+    //   been computed yet
+    std::queue<std::string> task_queue;
+    int next_tree_label = 0;
+
+    // build initially empty Rabin transition table
+    std::vector<std::vector<int>> rabin_transitions;
+
+    for (int pre_state = 0; pre_state < num_states; pre_state++) {
+        std::vector<int> v;
+        for (int character = 0; character < alphabet_size; character++) {
+            v.push_back(-1);
+        }
+        rabin_transitions.push_back(v);
+    }
 
 
+    // Create initial tree, add it to task queue & tree_mapping
+
+    SafraTree *initial_tree = new SafraTree(num_states, alphabet_size,
+        transitions, initial_states, final_states);
+    std::string initial_string = initial_tree->ToString();
+
+    tree_mapping[initial_string] = std::make_pair(next_tree_label++, initial_tree);
+    task_queue.push(initial_string);
 
 
+    // Keep processing trees until the task queue is empty
+
+    while (!task_queue.empty()) {
+
+        std::string tree_string = task_queue.front();
+        task_queue.pop();
+
+        SafraTree *tree = tree_mapping[tree_string].second;
+        for (int character = 0; character < alphabet_size; character++) {
+
+            // Find the resulting tree for each character
+            SafraTree *transition_tree = new SafraTree(tree, character);
+            std::string transition_string = transition_tree->ToString();
+
+            // If it's not in the mapping already, add it into the mapping and
+            //   task queue
+            if (tree_mapping.find(transition_string) == tree_mapping.end()) {
+
+                tree_mapping[transition_string] = std::make_pair(
+                    next_tree_label++, transition_tree);
+
+                task_queue.push(transition_string);
+            }
+            // Otherwise, delete the SafraTree pointer (we already have one in
+            //   the mapping)
+            else { delete transition_tree; }
+
+            // In either case, add a transition into rabin_transitions
+            int pre_label = tree_mapping[tree_string].first;
+            int post_label = tree_mapping[transition_string].first;
+            rabin_transitions[pre_label][character] = post_label;
+        }
+    }
+
+    // We now have all of the states and transitions in our Rabin automaton;
+    //   all that remains is to compute the Rabin pairs
+
+    // iterates over (string, (int, SafraTree*)) objects
+    for (auto mapping_pair : tree_mapping) {
+
+        std::string tree_string = mapping_pair.first;
+
+        int label = mapping_pair.second.first;
+        SafraTree *tree = mapping_pair.second.second;
+
+    }
 
 }
 
@@ -394,7 +468,7 @@ int main(int argc, const char *argv[]) {
 
     std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
 
-    RunSafra();    
+    RunSafra(num_states, alphabet_size, initial_states, final_states, transitions);    
 
     std::cout << "num_states=" << num_states << ", alphabet_size=" << alphabet_size << "\n";
     std::cout << "initial_states=" << std::hex << initial_states;
