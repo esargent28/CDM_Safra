@@ -13,6 +13,7 @@
 #include <vector>
 #include <unordered_map>
 #include <set>
+#include <unordered_set>
 #include <iostream>
 #include <string>
 #include <cstdint>
@@ -26,7 +27,7 @@ public:
     SafraTree(int num_states, int alphabet_size,
         std::vector<std::vector<int64_t>> transition, int64_t initial_states,
         int64_t final_states);
-    SafraTree(SafraTree *original);
+    SafraTree(SafraTree *original, const int &character);
     ~SafraTree();
 
     // Public methods for each step of the algorithm
@@ -48,7 +49,8 @@ private:
     public:
 
         // Constructor & Destructor
-        SafraNode(const int64_t &states, const bool &marked);
+        SafraNode(const int64_t &states, const bool &marked, SafraTree *tree);
+        SafraNode(SafraNode *other);
         ~SafraNode();
 
         // Access methods for member variables
@@ -73,8 +75,8 @@ private:
         // Methods for steps of Safra's Algorithm
         void UnmarkAll();
         void TransitionStates(const int &c);
-        void CreateChild(int64_t final_states);
-        void AttachChildrenToAllNodes(int64_t final_states);
+        void CreateChild();
+        void AttachChildrenToAllNodes();
         void HorizontalMergeNodeLevel();
         void HorizontalMergeAllNodes();
         void KillEmptyNodesNodeLevel();
@@ -105,7 +107,10 @@ private:
     int64_t Transition(const int &state, const int &character);
     int GetNewLabel();
     void RemoveLabel(int label);
+    int64_t GetInitialStates();
     int64_t GetFinalStates();
+    void CopyChildren(SafraNode *node, SafraNode *other_node,
+        std::unordered_set<int> &used_labels);
 
     // Static helper methods
     int64_t MakeBitvector(std::set<int> states);

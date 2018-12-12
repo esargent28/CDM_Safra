@@ -11,6 +11,7 @@
 #include <vector>
 #include <unordered_map>
 #include <set>
+#include <unordered_set>
 #include <cassert>
 #include <iostream>
 #include <sstream>
@@ -41,7 +42,7 @@ SafraTree::SafraTree(int num_states, int alphabet_size,
     initial_states_ = initial_states;
     final_states_ = final_states;
 
-    unused_labels_ = new std::priority_queue<int>;
+    unused_labels_ = new std::priority_queue<int>();
 
     //initialize priority queue that contains every number from 1 to 2*n
     for (int i = 1; i <= 2*num_states_; i++) {
@@ -52,35 +53,86 @@ SafraTree::SafraTree(int num_states, int alphabet_size,
     if (Intersect(initial_states_, final_states_) == EMPTY_SET) { 
         // Empty intersection between I and F
         // => Initial tree is (1 : I)
-        root_ = new SafraNode(initial_states_, false);
+        root_ = new SafraNode(initial_states_, false, this);
     }
     else if (Difference(initial_states_, final_states_) == EMPTY_SET) {
         // I is a subset of F
         // => Initial tree is (1 : I!)
-        root_ = new SafraNode(initial_states_, true);
+        root_ = new SafraNode(initial_states_, true, this);
     }
     else {
         // Otherwise
         // => Initial tree is (1 : I, 2 : I n F!)
-        root_ = new SafraNode(initial_states_, false);
+        root_ = new SafraNode(initial_states_, false, this);
         SafraNode *child = new SafraNode(
-            Intersect(initial_states_, final_states), true);
+            Intersect(initial_states_, final_states), true, this);
         root_->AppendChild(child);
     }
 
 }
 
-/*
- * Copy constructor: Given a pointer to another Safra tree, creates a copy
- */
-SafraTree::SafraTree(SafraTree *other) {
+void SafraTree::CopyChildren(SafraNode *node, SafraNode *other_node,
+    std::unordered_set<int> &used_labels) {
 
+    for (SafraNode *other_child : other_node->GetChildren()) {
+        // Add label into our used set, append an identical child to our node
+        used_labels.insert(other_child->GetLabel());
+        SafraNode *child = new SafraNode(other_child);
+        node->AppendChild(child);
+
+        // Recursively copy all of the child's children
+        CopyChildren(child, other_child, used_labels);
+    }
+}
+
+
+/*
+ * Transition constructor: Given an original SafraTree and a character, produces
+ *   a new SafraTree that corresponds to the transition from the given tree
+ *   along the specified character
+ */
+SafraTree::SafraTree(SafraTree *original, const int &character) {
+
+    // Part 1: Copy tree structure over
+
+    std::unordered_set<int> used_labels = {};
+
+    // Copy over data about automaton
+    initial_states_ = original->initial_states_;
+    final_states_ = original->final_states_;
+    int num_states_ = original->num_states_;
+    transition_rule_ = original->transition_rule_;
+
+    // Copy nodes over, keeping track of which labels have been used
+    root_ = new SafraNode(original->root_);
+    used_labels.insert(root_->GetLabel());
+
+    // Build unused_labels_ priority queue (only contains things not in our
+    //   used_labels set)
+    unused_labels_ = new std::priority_queue<int>();
+
+    for (int i = 1; i <= 2*num_states_; i++) {
+        if (used_labels.find(i) == used_labels.end()) {
+            unused_labels_->push(i);
+        }
+    }
+
+    // Part 2: Run all 6 steps new tree
+    UnmarkAllNodes();
+    UpdateStateSets(character);
+    AttachChildren();
+    HorizontalMerge();
+    KillEmptyNodes();
+    VerticalMerge();
 }
 
 /*
  * Destructor: Frees up all resources used by this Safra tree
  */
 SafraTree::~SafraTree() {
+
+    // free root and all its children
+    delete root_;
 
     // free priority queue
     delete unused_labels_;
@@ -104,30 +156,27 @@ void SafraTree::UpdateStateSets(const int &c) {
     GetRoot()->TransitionStates(c);
 }
 
-void SafraTree::SafraNode::CreateChild(int64_t final_states) {
+void SafraTree::SafraNode::CreateChild() {
     int64_t parent_states = GetStates();
 
-    int64_t child_states = Union(parent_states, final_states);
+    int64_t child_states = Union(parent_states, GetTree()->final_states_);
 
     if (child_states == EMPTY_SET)
         return;
 
     bool child_is_marked = true;
 
-    SafraNode *child_node = new SafraNode(child_states, child_is_marked);
+    SafraNode *child_node = new SafraNode(child_states, child_is_marked, GetTree());
 
     AppendChild(child_node);
 }
 
-void SafraTree::SafraNode::AttachChildrenToAllNodes(int64_t final_states) {
+void SafraTree::SafraNode::AttachChildrenToAllNodes() {
 
-    std::vector<SafraTree::SafraNode *> children = GetChildren();
-
-    for (int i = 0; i < children.size(); i++) {
-        (*(children[i])).CreateChild(final_states);
+    for (SafraNode *child : GetChildren()) {
+        child->CreateChild();
     }
-
-    CreateChild(final_states);
+    CreateChild();
 }
 
 /*
@@ -137,7 +186,7 @@ void SafraTree::SafraNode::AttachChildrenToAllNodes(int64_t final_states) {
  *   mark u.
  */
 void SafraTree::AttachChildren() {
-    GetRoot()->AttachChildrenToAllNodes(GetFinalStates());
+    GetRoot()->AttachChildrenToAllNodes();
 }
 
 void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
@@ -179,7 +228,7 @@ void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
     while (i < GetChildren().size()) {
         SafraNode *child = GetChildren()[i];
 
-        if (child.GetStates() == EMPTY_SET) {
+        if (child->GetStates() == EMPTY_SET) {
             EraseChild(i);
         } else {
             child->KillEmptyNodesNodeLevel();
@@ -211,11 +260,11 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
         // Mark parent, kill children        
         SetMarked(true);
 
-        while (GetChildren().size > 0) {
+        while (GetChildren().size() > 0) {
             EraseChild(0);
         }
     }
-    
+
     else {
         for (SafraNode *child : GetChildren()) {
             child->VerticalMergeNodeLevel();
@@ -269,6 +318,10 @@ int64_t SafraTree::GetFinalStates() {
     return final_states_;
 }
 
+int64_t SafraTree::GetInitialStates() {
+    return initial_states_;
+}
+
 SafraTree::SafraNode *SafraTree::GetRoot() {
     return root_;
 }
@@ -280,11 +333,21 @@ SafraTree::SafraNode *SafraTree::GetRoot() {
 
 // =================== SafraNode Constructor & Destructor =================== //
 
-SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked) {
+SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked, SafraTree *tree) {
 
+    tree_ = tree;
     states_ = states;
     label_ = GetTree()->GetNewLabel();
     marked_ = marked;
+}
+
+
+SafraTree::SafraNode::SafraNode(SafraNode *other) {
+
+    tree_ = other->tree_;
+    states_ = other->states_;
+    label_ = other->label_;
+    marked_ = other->marked_;
 }
 
 
