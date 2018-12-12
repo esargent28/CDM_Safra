@@ -34,7 +34,9 @@ To run our implementation on the test suite:
 	 4) All transitions
 	 5) Initial states
 	 6) Final states
- 
+
+All numbering should be 1-indexed rather than 0-indexed.
+
 Between the dashed lines is an example to demonstrate the desired format:
 
 ------------
@@ -66,28 +68,34 @@ If the input file does not match the deisired format, the command-line
 
   The output file written by the command-line application will specify the
     following characteristics of the corresponding Rabin automaton:
-	 1) Number of states
-	 2) Alphabet size
-	 3) Number of transitions
-	 4) All transitions
-	 5) Initial state
-	 6) Rabin pairs
+     1) Corresponding Buechi file name
+	 2) Number of states
+	 3) Alphabet size
+	 4) Number of transitions
+	 5) All transitions
+	 6) Initial state
+	 7) Rabin pairs
 
 Between the dashed lines is an example to demonstrate the format:
 
 ------------
+RABIN
+# Buechi filename
+
 # Number of states
 
 # Alphabet size
 
 # Number of transitions
+
 # begin transitions
 
 # end transitions
 # Rabin initial
 
-# Rabin pairs
+# begin Rabin pairs
 
+# end Rabin pairs
 # Rabin eof
 ------------
 

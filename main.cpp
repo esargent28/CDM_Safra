@@ -29,7 +29,13 @@
 #define END_TRANSITIONS_TAG "# end transitions"
 #define INITIAL_STATES_TAG "# Buechi initial"
 #define FINAL_STATES_TAG "# Buechi final"
-#define EOF_TAG "# Buechi eof"
+#define BUECHI_EOF_TAG "# Buechi eof"
+
+#define RABIN_INFILE_TAG "# Buechi filename"
+#define RABIN_INITIAL_STATE_TAG "# Rabin initial"
+#define BEGIN_RABIN_PAIRS_TAG "# begin Rabin pairs"
+#define END_RABIN_PAIRS_TAG "# end Rabin pairs"
+#define RABIN_EOF_TAG "# Rabin eof"
 
 // Buffer to hold 
 char buffer[100];
@@ -160,7 +166,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                 else if (!line.compare(FINAL_STATES_TAG)) {
                     state = (found_final_states ? INVALID : READ_FINAL_STATES);
                 }
-                else if (!line.compare(EOF_TAG)) {
+                else if (!line.compare(BUECHI_EOF_TAG)) {
                     if (found_num_states && found_alphabet_size &&
                         found_initial_states && found_transitions &&
                         found_num_transitions && found_final_states) {
@@ -300,6 +306,10 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
  */
 void RunSafra() {
 
+
+
+
+
 }
 
 
@@ -311,7 +321,36 @@ void RunSafra() {
  */
 void WriteRabin() {
 
-    outfile << "Placeholder output" << std::endl;
+    std::string input_file_name;
+    int num_states, alphabet_size, initial_state, num_transitions;
+    std::vector<std::vector<int>> transitions;
+    std::vector<std::pair<std::set<int>, std::set<int>>> rabin_pairs;
+
+    outfile << "RABIN" << std::endl;
+    outfile << RABIN_INFILE_TAG << std::endl;
+    outfile << input_file_name << std::endl;
+
+    outfile << NUM_STATES_TAG << std::endl;
+    outfile << num_states << std::endl;
+
+    outfile << ALPHABET_SIZE_TAG << std::endl;
+    outfile << alphabet_size << std::endl;
+
+    outfile << NUM_TRANSITIONS_TAG << std::endl;
+    outfile << num_transitions << std::endl;
+
+    outfile << BEGIN_TRANSITIONS_TAG << std::endl;
+    for (int pre_state = 0; pre_state < transitions.size(); pre_state++) {
+        for (int character = 0; character < transitions[pre_state].size(); character++) {
+            int post_state = transitions[pre_state][character];
+
+            outfile << (pre_state + 1) << " " << (character + 1) << " "
+                    << (post_state + 1) << std::endl;
+        }
+    }
+
+    outfile << END_TRANSITIONS_TAG << std::endl;
+
 }
 
 
@@ -373,7 +412,7 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
-    WriteRabin();
+
 
     // Close output file
     outfile.close();

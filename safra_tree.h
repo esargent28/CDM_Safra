@@ -17,12 +17,15 @@
 #include <string>
 #include <cstdint>
 #include <queue>
+#include <string>
 
 class SafraTree {
 public:
 
     // Standard constructor, copy constructor, & destructor
-    SafraTree(); // TODO -- change arguments to make tree for initial states
+    SafraTree(int num_states, int alphabet_size,
+        std::vector<std::vector<int64_t>> transition, int64_t initial_states,
+        int64_t final_states);
     SafraTree(SafraTree *original);
     ~SafraTree();
 
@@ -33,6 +36,9 @@ public:
     void HorizontalMerge();             // (4)
     void KillEmptyNodes();              // (5)
     void VerticalMerge();               // (6)
+
+    // ToString method
+    std::string ToString();
 
 private:
 
@@ -61,6 +67,8 @@ private:
 
         SafraTree *GetTree();
 
+        std::string ToString();
+        std::string StringifyChildren();
 
         // Methods for steps of Safra's Algorithm
         void UnmarkAll();
@@ -85,7 +93,7 @@ private:
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::vector<int64_t> > transition_rule_;
+    std::vector<std::vector<int64_t>> transition_rule_;
 
     SafraNode *root_;
     std::priority_queue<int> *unused_labels_;
@@ -110,9 +118,6 @@ private:
     static bool Contains(const int64_t &x, const int &i);
     static int64_t Insert(const int64_t &x, const int &i);
     static int64_t Remove(const int64_t &x, const int &i);
-
-    //static /*constexpr*/ int BITS_PER_ITEM;
-    //static /*constexpr*/ int64_t EMPTY_SET;
 };
 
 
