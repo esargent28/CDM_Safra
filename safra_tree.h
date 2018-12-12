@@ -48,7 +48,7 @@ private:
     public:
 
         // Constructor & Destructor
-        SafraNode(const int64_t &states, const int &label, const bool &marked);
+        SafraNode(const int64_t &states, const bool &marked);
         ~SafraNode();
 
         // Access methods for member variables
