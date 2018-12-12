@@ -93,7 +93,7 @@ SafraTree::~SafraTree() {
  * STEP 1: Unmarks all nodes in the Safra tree
  */
 void SafraTree::UnmarkAllNodes() {
-    root_->UnmarkAll();
+    GetRoot()->UnmarkAll();
 }
 
 /*
@@ -101,9 +101,7 @@ void SafraTree::UnmarkAllNodes() {
  *   automaton's transition rules
  */
 void SafraTree::UpdateStateSets(const int &c) {
-    SafraNode *head = GetRoot();
-
-    head->TransitionStates(c);
+    GetRoot()->TransitionStates(c);
 }
 
 void SafraTree::SafraNode::CreateChild(int64_t final_states) {
@@ -139,41 +137,27 @@ void SafraTree::SafraNode::AttachChildrenToAllNodes(int64_t final_states) {
  *   mark u.
  */
 void SafraTree::AttachChildren() {
-
-    int64_t final_states = GetFinalStates(); // need to figure out how this is going to get access
-                                             // to the final states
-
-    // also need to figure out how to get the head node too
-    GetRoot()->AttachChildrenToAllNodes(final_states);
+    GetRoot()->AttachChildrenToAllNodes(GetFinalStates());
 }
 
 void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
 
-    std::vector<SafraTree::SafraNode *> children = GetChildren();
-
     int64_t seen_states = EMPTY_SET;
 
-    for (int i = 0; i < children.size(); i++) {
-        SafraNode child = *(children[i]);
+    for (SafraNode *child : GetChildren()) {
 
-        int64_t child_states = child.GetStates();
-
+        int64_t child_states = child->GetStates();
         int64_t new_child_states = Difference(child_states, seen_states);
-        
         seen_states = Union(seen_states, child_states);
 
-        child.SetStates(new_child_states);
+        child->SetStates(new_child_states);
     }
 }
 
-void SafraTree::SafraNode::HorizontalMergeAllNodes(){
+void SafraTree::SafraNode::HorizontalMergeAllNodes() {
 
-    std::vector<SafraTree::SafraNode *> children = GetChildren();
-
-    for (int i = 0; i < children.size(); i++) {
-        SafraNode child = *(children[i]);
-
-        child.HorizontalMergeAllNodes();
+    for (SafraNode *child : GetChildren()) {
+        child->HorizontalMergeAllNodes();
     }
 
     HorizontalMergeNodeLevel();
@@ -187,19 +171,18 @@ void SafraTree::HorizontalMerge() {
     GetRoot()->HorizontalMergeAllNodes();
 }
 
+
 void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
     
-    std::vector<SafraTree::SafraNode *> children = GetChildren();
-
     int i = 0;
 
-    while (i < children.size()) {
-        SafraNode child = *(children[i]);
+    while (i < GetChildren().size()) {
+        SafraNode *child = GetChildren()[i];
 
         if (child.GetStates() == EMPTY_SET) {
             EraseChild(i);
         } else {
-            child.KillEmptyNodesNodeLevel();
+            child->KillEmptyNodesNodeLevel();
             i++;
         }
     }
@@ -215,40 +198,29 @@ void SafraTree::KillEmptyNodes() {
 
 void SafraTree::SafraNode::VerticalMergeNodeLevel() {
 
-    std::vector<SafraTree::SafraNode *> children = GetChildren();
-
     int64_t all_children_states = EMPTY_SET;
 
-    for (int i = 0; i < children.size(); i++) {
-        SafraNode child = *(children[i]);
-
-        all_children_states = Union(all_children_states, child.GetStates());
+    for (SafraNode *child : GetChildren()) {
+        all_children_states = Union(all_children_states, child->GetStates());
     }
 
     int64_t this_node_states = GetStates();
 
     if (this_node_states == all_children_states) {
-        
+
+        // Mark parent, kill children        
         SetMarked(true);
 
-        int i = 0;
-
-        while (i < children.size()) {
-            SafraNode child = *(children[i]);
-            EraseChild(i);
+        while (GetChildren().size > 0) {
+            EraseChild(0);
         }
     }
-
+    
     else {
-
-        for (int i = 0; i < children.size(); i++) {
-            SafraNode child = *(children[i]);
-
-            child.VerticalMergeNodeLevel();
+        for (SafraNode *child : GetChildren()) {
+            child->VerticalMergeNodeLevel();
         }
-
     }
-
 }
 
 /*
