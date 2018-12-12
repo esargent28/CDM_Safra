@@ -49,23 +49,22 @@ SafraTree::SafraTree(int num_states, int alphabet_size,
     }
 
     // Create initial node setup
-    if (Intersect(initial_states_, final_states_) == 0) { 
+    if (Intersect(initial_states_, final_states_) == EMPTY_SET) { 
         // Empty intersection between I and F
         // => Initial tree is (1 : I)
-        root_ = new SafraNode(initial_states_, GetNewLabel(), false);
+        root_ = new SafraNode(initial_states_, false);
     }
-    else if (Difference(initial_states_, final_states_) == 0) {
+    else if (Difference(initial_states_, final_states_) == EMPTY_SET) {
         // I is a subset of F
         // => Initial tree is (1 : I!)
-        root_ = new SafraNode(initial_states_, GetNewLabel(), true);
+        root_ = new SafraNode(initial_states_, true);
     }
     else {
         // Otherwise
         // => Initial tree is (1 : I, 2 : I n F!)
-
-        root_ = new SafraNode(initial_states_, GetNewLabel(), false);
+        root_ = new SafraNode(initial_states_, false);
         SafraNode *child = new SafraNode(
-            Intersect(initial_states_, final_states), GetNewLabel(), true);
+            Intersect(initial_states_, final_states), true);
         root_->AppendChild(child);
     }
 
@@ -114,12 +113,10 @@ void SafraTree::SafraNode::CreateChild(int64_t final_states) {
 
     if (child_states == EMPTY_SET)
         return;
-    
-    int new_label = GetTree()->GetNewLabel();
-    
+
     bool child_is_marked = true;
 
-    SafraNode *child_node = new SafraNode(child_states, new_label, child_is_marked);
+    SafraNode *child_node = new SafraNode(child_states, child_is_marked);
 
     AppendChild(child_node);
 }
@@ -311,17 +308,20 @@ SafraTree::SafraNode *SafraTree::GetRoot() {
 
 // =================== SafraNode Constructor & Destructor =================== //
 
-SafraTree::SafraNode::SafraNode(const int64_t &states, const int &label,
-    const bool &marked) {
+SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked) {
 
     states_ = states;
-    label_ = label;
+    label_ = GetTree()->GetNewLabel();
     marked_ = marked;
 }
 
 
 SafraTree::SafraNode::~SafraNode() {
 
+    GetTree()->RemoveLabel(GetLabel());
+    for (SafraNode *child : GetChildren()) {
+        delete child;
+    }
 }
 
 
@@ -361,12 +361,7 @@ void SafraTree::SafraNode::AppendChild(SafraNode *child) {
 
 void SafraTree::SafraNode::EraseChild(const int &i) {
 
-    int this_child_label = children_[i]->GetLabel();
-
-    GetTree()->RemoveLabel(this_child_label);
-
-    delete(children_[i]);
-
+    delete children_[i];
     children_.erase(children_.begin() + i);
 }
 
