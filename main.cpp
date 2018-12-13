@@ -550,6 +550,10 @@ int main(int argc, const char *argv[]) {
     delete[] rabin_lefts;
     delete[] rabin_rights;
 
+    for (auto mapping_pair : tree_mapping) {
+        delete mapping_pair.second.second;
+    }
+
     std::cout << "Done. Closing file...\n";
 
     // Close output file
