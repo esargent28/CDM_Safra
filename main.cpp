@@ -320,8 +320,6 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
 
     while (!task_queue.empty()) {
 
-        //std::cout << "beginning?\n";
-
         std::string tree_string = task_queue.front();
         task_queue.pop();
 
@@ -331,8 +329,6 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
             // Find the resulting tree for each character
             SafraTree *transition_tree = new SafraTree(tree, character);
             std::string transition_string = transition_tree->ToString();
-
-            //std::cout << "here?\n";
 
             // If it's not in the mapping already, add it into the mapping and
             //   task queue
@@ -346,26 +342,16 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
             // Otherwise, delete the SafraTree pointer (we already have one in
             //   the mapping)
             else {
-                //std::cout << "deleting redundant tree " << transition_string << std::endl;
                 delete transition_tree;
-                //std::cout << "done deleting redundant tree\n";
             }
 
             // In either case, add a transition into rabin_transitions
             int pre_label = tree_mapping[tree_string].first;
             int post_label = tree_mapping[transition_string].first;
 
-            //std::cout << "T" << pre_label+1 << tree_string << " --" << character + 1
-            //          << "--> T" << post_label+1 << transition_string << std::endl;
-
-            //std::cout << "accessing rabin transitions\n";
-
             rabin_transitions[character][pre_label] = post_label;
-            //std::cout << "am i a dummy\n";
         }
     }
-
-    //std::cout << "making rabin pairs\n";
 
     // We now have all of the states and transitions in our Rabin automaton;
     //   all that remains is to compute the Rabin pairs

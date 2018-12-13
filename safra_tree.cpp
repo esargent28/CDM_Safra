@@ -66,7 +66,7 @@ SafraTree::SafraTree(int num_states, int alphabet_size,
         root_ = new SafraNode(initial_states_, false, this);
         SafraNode *child = new SafraNode(
             Intersect(initial_states_, final_states), true, this);
-        //std::cout << "initializing, 'otherwise' case\n";
+
         root_->AppendChild(child);
     }
 
@@ -80,7 +80,6 @@ void SafraTree::CopyChildren(SafraNode *node, SafraNode *other_node,
         used_labels.insert(other_child->GetLabel());
         SafraNode *child = new SafraNode(other_child, this);
 
-        //std::cout << "copy constructor append child\n";
         node->AppendChild(child);
 
         // Recursively copy all of the child's children
@@ -113,8 +112,8 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
 
     // Build unused_labels_ priority queue (only contains things not in our
     //   used_labels set)
-    unused_labels_ = new std::priority_queue<int, std::vector<int>, std::greater<int>>();
-    //std::cout << "*** NEW UNUSED LABELS: " << unused_labels_ << " ***\n";
+    unused_labels_ = new
+        std::priority_queue<int, std::vector<int>,std::greater<int>>();
 
     for (int i = 0; i < 2*num_states_; i++) {
         if (used_labels.find(i) == used_labels.end()) {
@@ -122,22 +121,13 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
         }
     }
 
-
-    // Part 2: Run all 6 steps new tree
-    //std::cout << "Transition from " << ToString() << " along " << character + 1 << std::endl;
+    // Part 2: Run all 6 steps on the new tree
     UnmarkAllNodes();
-    //std::cout << "    1.  Unmark: " << ToString() << std::endl;
     UpdateStateSets(character);
-    //std::cout << "    2.  Update: " << ToString() << std::endl;
     AttachChildren();
-    //std::cout << "    3.  Create: " << ToString() << std::endl;
     HorizontalMerge();
-    //std::cout << "    4.  HMerge: " << ToString() << std::endl;
     KillEmptyNodes();
-    //std::cout << "    5.  XEmpty: " << ToString() << std::endl;
     VerticalMerge();
-    //std::cout << "    6.  VMerge: " << ToString() << std::endl;
-
 }
 
 /*
@@ -145,12 +135,9 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
  */
 SafraTree::~SafraTree() {
 
-    //std::cout << "ROOT: " << root_ << std::endl;
-
     // free root and all its children
     delete root_;
 
-    //std::cout << "*** DELETE UNUSED LABELS: " << unused_labels_ << " ***\n";
     // free priority queue
     delete unused_labels_;
 }
@@ -191,12 +178,8 @@ void SafraTree::SafraNode::TransitionStates(const int &c) {
 
     int64_t new_states = 0;
 
-    //std::cout << tree_->num_states_ << std::endl;
-
     for (int i = 0; i < tree_->num_states_; i++) {
-        //std::cout << ((states_ >> i) & 1) << std::endl;
         if ((states_ >> i) & 1 == 1) {
-            //std::cout << "add transition from " << i << " along " << c << std::endl;
             new_states = tree_->Union(new_states, tree_->Transition(i, c));
         }
     }
@@ -219,22 +202,17 @@ void SafraTree::UpdateStateSets(const int &c) {
 void SafraTree::SafraNode::CreateChild() {
     int64_t parent_states = GetStates();
 
-    //std::cout << GetTree() << "\n";
-
     int64_t child_states = Intersect(parent_states, GetTree()->final_states_);
 
-    //std::cout << "union?\n";
-
     if (child_states == EMPTY_SET) {
-        //std::cout << "empty state set\n";
         return;
     }
 
     bool child_is_marked = true;
 
-    SafraNode *child_node = new SafraNode(child_states, child_is_marked, GetTree());
+    SafraNode *child_node = new SafraNode(child_states, child_is_marked,
+        GetTree());
 
-    //std::cout << "create child append: " << this << ", " << child_node << "\n";
     AppendChild(child_node);
 }
 
@@ -297,25 +275,18 @@ void SafraTree::HorizontalMerge() {
 
 void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
 
-    //std::cout << "killing empty nodes\n";
     int i = 0;
 
-    //std::cout << "i=" << i << ", size=" << GetChildren().size() << std::endl;
     while (i < GetChildren().size()) {
         SafraNode *child = GetChildren()[i];
 
         if (child->GetStates() == EMPTY_SET) {
-            //std::cout << " ==> Erased!\n";
             EraseChild(i);
         } else {
             child->KillEmptyNodesNodeLevel();
             i++;
         }
-        //std::cout << "i=" << i << ", size=" << GetChildren().size() << std::endl;
-
     }
-
-    //std::cout << "done killing empty nodes\n";
 }
 
 /*
@@ -344,14 +315,10 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
         SetMarked(true);
 
         for (SafraNode *child : children_) {
-            //std::cout << "vertical merge delete " << child << "\n";
             delete child;
-            //std::cout << "finished vmerge delete\n";
         }
-
         children_.clear();
     }
-
     else {
         for (SafraNode *child : GetChildren()) {
             child->VerticalMergeNodeLevel();
@@ -449,20 +416,14 @@ SafraTree::SafraNode *SafraTree::GetRoot() {
 SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked,
     SafraTree *tree) {
 
-    //std::cout << "new safra node " << this << "(standard)\n";
-
     tree_ = tree;
     states_ = states;
-    //std::cout << "Grabbing new label from " << GetTree()->unused_labels_ << "\n";
     label_ = GetTree()->GetNewLabel();
-    //std::cout << "Grabbed new label\n";
     marked_ = marked;
 }
 
 
 SafraTree::SafraNode::SafraNode(SafraNode *other, SafraTree *my_tree) {
-
-    //std::cout << "new safra node " << this << "(copy of " << other << ")\n";
 
     tree_ = my_tree;
     states_ = other->states_;
@@ -473,18 +434,11 @@ SafraTree::SafraNode::SafraNode(SafraNode *other, SafraTree *my_tree) {
 
 SafraTree::SafraNode::~SafraNode() {
 
-    //std::cout << "   begin delete process for " << this << " with " << GetChildren().size() << " children\n";
-
     GetTree()->RemoveLabel(GetLabel());
     for (SafraNode *child : children_) {
-        //std::cout << " -> Deleting child " << child << "(" << child->ToString() << ")" << std::endl;
         delete child;
-        //std::cout << "  done deleting child\n";
     }
-    //std::cout << "Clearing child vector\n";
     children_.clear();
-
-    //std::cout << "   end delete process for " << this << "\n";
 }
 
 
@@ -520,7 +474,7 @@ std::vector<SafraTree::SafraNode *> &SafraTree::SafraNode::GetChildren() {
 
 void SafraTree::SafraNode::AppendChild(SafraNode *child) {
     if (child == this) {
-        //std::cout << " ERROR: Node cannot be its own child\n";
+        // ERROR: Node cannot be its own child
         return;
     }
     children_.push_back(child);
@@ -530,9 +484,7 @@ void SafraTree::SafraNode::EraseChild(const int &i) {
 
     assert(i < children_.size());
 
-    //std::cout << "Erase child " << children_[i] << "(" << children_[i]->ToString() << ")" << std::endl;
     delete children_[i];
-    //std::cout << "  done erasing child\n";
     children_.erase(children_.begin() + i);
 }
 
