@@ -75,6 +75,8 @@ private:
         std::string ToString();
         std::string StringifyChildren();
 
+        void RecursiveRemoveFromStates(int64_t r_states);
+
         // Methods for steps of Safra's Algorithm
         void UnmarkAll();
         void TransitionStates(const int &c);
