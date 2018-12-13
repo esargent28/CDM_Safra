@@ -25,7 +25,7 @@ public:
 
     // Standard constructor, copy constructor, & destructor
     SafraTree(int num_states, int alphabet_size,
-        std::vector<std::vector<int64_t>> transition, int64_t initial_states,
+        std::vector<std::vector<int64_t> > transition, int64_t initial_states,
         int64_t final_states);
     SafraTree(SafraTree *original, const int &character);
     ~SafraTree();
@@ -37,6 +37,9 @@ public:
     void HorizontalMerge();             // (4)
     void KillEmptyNodes();              // (5)
     void VerticalMerge();               // (6)
+
+    // For getting Rabin Pairs
+    bool** GetLabelInfo(int num_labels);
 
     // ToString method
     std::string ToString();
@@ -82,6 +85,9 @@ private:
         void KillEmptyNodesNodeLevel();
         void VerticalMergeNodeLevel();
 
+        // For getting RabinPairs
+        void GetLabelInfoNodeLevel(bool **state_info);
+
     private:
         // Member variables
         int64_t states_;
@@ -95,7 +101,7 @@ private:
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::vector<int64_t>> transition_rule_;
+    std::vector<std::vector<int64_t> > transition_rule_;
 
     SafraNode *root_;
     std::priority_queue<int> *unused_labels_;

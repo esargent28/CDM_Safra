@@ -73,7 +73,7 @@ std::fstream infile, outfile;
  *   alphabet_size
  */
 void InitializeTransitionVector(const int &num_states, const int &alphabet_size,
-    std::vector<std::vector<int64_t>> &transitions) {
+    std::vector<std::vector<int64_t> > &transitions) {
 
     for (int state = 0; state < num_states; state++) {
         std::vector<int64_t> v;
@@ -89,7 +89,7 @@ void InitializeTransitionVector(const int &num_states, const int &alphabet_size,
  * Insert a transition from state #pre to state #post along character
  */
 void InsertTransition(const int &pre_state, const int &post_state,
-    const int &character, std::vector<std::vector<int64_t>> &transitions) {
+    const int &character, std::vector<std::vector<int64_t> > &transitions) {
 
     transitions[pre_state][character] |= (1 >> post_state);
 }
@@ -101,7 +101,7 @@ void InsertTransition(const int &pre_state, const int &post_state,
  *   produced a full, valid Buechi automaton, and false otherwise.
  */
 bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
-    int64_t &final_states, std::vector<std::vector<int64_t>> &transitions) {
+    int64_t &final_states, std::vector<std::vector<int64_t> > &transitions) {
 
     // Possible read states we can be in
     enum ReadState {
@@ -305,10 +305,10 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
  * Runs Safra's algorithm on the provided Buechi automaton.
  */
 void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
-    int64_t final_states, std::vector<std::vector<int64_t>> transitions) {
+    int64_t final_states, std::vector<std::vector<int64_t> > transitions) {
 
     // tree_mapping : (string representation of tree -> label, SafraTree ptr)
-    std::unordered_map<std::string, std::pair<int, SafraTree *>> tree_mapping = {};
+    std::unordered_map<std::string, std::pair<int, SafraTree *> > tree_mapping = *(new std::unordered_map<std::string, std::pair<int, SafraTree *> >);
 
     // task_queue contains strings for all trees whose transitions have not
     //   been computed yet
@@ -316,7 +316,7 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
     int next_tree_label = 0;
 
     // build initially empty Rabin transition table
-    std::vector<std::vector<int>> rabin_transitions;
+    std::vector<std::vector<int> > rabin_transitions;
 
     for (int pre_state = 0; pre_state < num_states; pre_state++) {
         std::vector<int> v;
@@ -374,15 +374,35 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
     // We now have all of the states and transitions in our Rabin automaton;
     //   all that remains is to compute the Rabin pairs
 
+    std::unordered_set<int> *rabin_lefts  = new std::unordered_set<int>[2*num_states];
+    std::unordered_set<int> *rabin_rights  = new std::unordered_set<int>[2*num_states];
+
     // iterates over (string, (int, SafraTree*)) objects
     for (auto mapping_pair : tree_mapping) {
 
         std::string tree_string = mapping_pair.first;
 
-        int label = mapping_pair.second.first;
+        int tree_label = mapping_pair.second.first;
         SafraTree *tree = mapping_pair.second.second;
 
+        bool **state_info = tree->GetLabelInfo(2*num_states);
+
+        for (int i = 0; i < 2*num_states; i++) {
+            if (state_info[i][1]) {
+                // this state is a marked node in the tree
+                rabin_rights[i].insert(tree_label);
+            } else if (state_info[i][0]) {
+                // this state is an unmarked node in the tree
+                // not in left or right side
+            } else {
+                // this state is not in the tree
+                rabin_lefts[i].insert(tree_label);
+            }
+        }
     }
+
+    // Now Rabin rights and Rabin lefts should be initialized correctly
+    // where matching indices correspond to pairs
 
 }
 
@@ -397,8 +417,8 @@ void WriteRabin() {
 
     std::string input_file_name;
     int num_states, alphabet_size, initial_state, num_transitions;
-    std::vector<std::vector<int>> transitions;
-    std::vector<std::pair<std::set<int>, std::set<int>>> rabin_pairs;
+    std::vector<std::vector<int> > transitions;
+    std::vector<std::pair<std::set<int>, std::set<int> > > rabin_pairs;
 
     outfile << "RABIN" << std::endl;
     outfile << RABIN_INFILE_TAG << std::endl;
@@ -452,7 +472,7 @@ int main(int argc, const char *argv[]) {
 
     int num_states, alphabet_size;
     int64_t initial_states, final_states;
-    std::vector<std::vector<int64_t>> transitions;
+    std::vector<std::vector<int64_t> > transitions;
 
     if (!ReadBeuchi(num_states, alphabet_size, initial_states,
         final_states, transitions)) {

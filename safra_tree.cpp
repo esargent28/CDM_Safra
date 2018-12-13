@@ -34,7 +34,7 @@ int64_t EMPTY_SET = 0;
  *   the Buchi automaton
  */
 SafraTree::SafraTree(int num_states, int alphabet_size,
-    std::vector<std::vector<int64_t>> transition, int64_t initial_states,
+    std::vector<std::vector<int64_t> > transition, int64_t initial_states,
     int64_t final_states) {
 
     num_states_ = num_states;
@@ -95,7 +95,7 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
 
     // Part 1: Copy tree structure over
 
-    std::unordered_set<int> used_labels = {};
+    std::unordered_set<int> used_labels = *(new std::unordered_set<int>());
 
     // Copy over data about automaton
     initial_states_ = original->initial_states_;
@@ -278,6 +278,46 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
  */
 void SafraTree::VerticalMerge() {
     GetRoot()->VerticalMergeNodeLevel();
+}
+
+
+void SafraTree::SafraNode::GetLabelInfoNodeLevel(bool **seen_states) {
+    // working with the assumption that labels can appear a maximum
+    // of once in the tree
+    int this_label = GetLabel();
+
+    if (IsMarked()) {
+        seen_states[this_label][1] = true;
+    } else {
+        seen_states[this_label][0] = true;
+    }
+
+    std::vector<SafraTree::SafraNode *> children = GetChildren();
+
+    for (int i = 0; i < children.size(); i++) {
+        children[i]->GetLabelInfoNodeLevel(seen_states);
+    }
+}
+
+/* 
+ * This is used to calculate the final accepting Rabin pairs.
+ * This method takes in a tree and the number of possible labels
+ * It then returns an array of two boolean arrays: B
+ *      - B[i][0] is true if i is in the tree but not marked
+ *      - B[i][1] is true if i is the the tree and is marked
+ */
+bool **SafraTree::GetLabelInfo(int num_labels) {
+    SafraNode *root = GetRoot();
+
+    bool* seen_states [num_labels];
+
+    for (int i = 0; i < num_labels; i++) {
+        seen_states[i] = new bool[2];
+    }
+
+    root->GetLabelInfoNodeLevel(seen_states);
+
+    return seen_states;
 }
 
 
