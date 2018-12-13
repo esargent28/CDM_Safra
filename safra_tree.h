@@ -25,7 +25,7 @@ public:
 
     // Standard constructor, copy constructor, & destructor
     SafraTree(int num_states, int alphabet_size,
-        std::vector<std::vector<int64_t> > transition, int64_t initial_states,
+        std::vector<std::vector<int64_t>> transition, int64_t initial_states,
         int64_t final_states);
     SafraTree(SafraTree *original, const int &character);
     ~SafraTree();
@@ -66,7 +66,7 @@ private:
         bool IsMarked();
         void SetMarked(const bool &marked);
 
-        std::vector<SafraNode *> GetChildren();
+        std::vector<SafraNode *> &GetChildren();
         void AppendChild(SafraNode *child);
         void EraseChild(const int &i);
 
@@ -101,10 +101,10 @@ private:
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::vector<int64_t> > transition_rule_;
+    std::vector<std::vector<int64_t>> transition_rule_;
 
     SafraNode *root_;
-    std::priority_queue<int> *unused_labels_;
+    std::priority_queue<int, std::vector<int>, std::greater<int>> *unused_labels_;
 
     // root access method
     SafraNode *GetRoot();
