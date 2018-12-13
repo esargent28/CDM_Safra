@@ -1,1 +1,21 @@
-Placeholder output
+RABIN
+# Buechi filename
+test/buechi1.aut
+# Number of states
+2
+# Alphabet size
+2
+# Number of transitions
+4
+# begin transitions
+2 1 2
+1 1 2
+2 2 1
+1 2 1
+# end transitions
+# Rabin initial
+1
+# begin Rabin pairs
+1 | 2 
+# end Rabin pairs
+# Rabin eof

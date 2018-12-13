@@ -25,7 +25,7 @@ public:
 
     // Standard constructor, copy constructor, & destructor
     SafraTree(int num_states, int alphabet_size,
-        std::vector<std::vector<int64_t>> transition, int64_t initial_states,
+        std::vector<int64_t> transition, int64_t initial_states,
         int64_t final_states);
     SafraTree(SafraTree *original, const int &character);
     ~SafraTree();
@@ -101,7 +101,7 @@ private:
     int64_t initial_states_;
     int64_t final_states_;
     int num_states_;
-    std::vector<std::vector<int64_t>> transition_rule_;
+    std::vector<int64_t> transition_rule_;
 
     SafraNode *root_;
     std::priority_queue<int, std::vector<int>, std::greater<int>> *unused_labels_;
@@ -117,8 +117,6 @@ private:
     int64_t GetFinalStates();
     void CopyChildren(SafraNode *node, SafraNode *other_node,
         std::unordered_set<int> &used_labels);
-
-    std::vector<std::vector<int64_t>> CopyTransitions(std::vector<std::vector<int64_t>> other_transitions);
 
     // Implementation of set functions using bitvector implementation
     static int64_t Union(const int64_t &x, const int64_t &y);
