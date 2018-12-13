@@ -1,21 +1,24 @@
 RABIN
 # Buechi filename
-test/buechi1.aut
+test/buechi2.aut
 # Number of states
-2
+3
 # Alphabet size
 2
 # Number of transitions
-4
+6
 # begin transitions
+3 1 3
+1 1 1
 2 1 2
-1 1 2
-2 2 1
-1 2 1
+3 2 2
+1 2 2
+2 2 3
 # end transitions
 # Rabin initial
 1
 # begin Rabin pairs
-1 | 2 
+1 3 | 2 
+2 1 | 3 
 # end Rabin pairs
 # Rabin eof

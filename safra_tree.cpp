@@ -115,17 +115,10 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
     num_states_ = original->num_states_;
     transition_rule_ = std::vector<int64_t>(original->transition_rule_);
 
-    //std::cout << "num states: " << num_states_ << std::endl;
-
-    //std::cout << "copy constructor: [";
-    for (int64_t c : transition_rule_) {
-        //std::cout << " " << c;
-    }
-    //std::cout << "]\n";
-
     // Copy nodes over, keeping track of which labels have been used
     root_ = new SafraNode(original->root_, this);
     used_labels.insert(root_->GetLabel());
+    CopyChildren(root_, original->GetRoot(), used_labels);
 
     // Build unused_labels_ priority queue (only contains things not in our
     //   used_labels set)
@@ -139,7 +132,8 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
     }
 
 
-    std::cout << "--Transition from " << ToString() << " along " << character << std::endl;
+    std::cout << "  Transition from " << ToString() << " along " << character << std::endl;
+    std::cout << root_->GetChildren().size() << "\n";
     // Part 2: Run all 6 steps new tree
     UnmarkAllNodes();
     std::cout << "   1) Unmark: " << ToString() << "\n";

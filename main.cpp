@@ -71,8 +71,8 @@ std::fstream infile, outfile;
 /*
  * Insert a transition from state #pre to state #post along character
  */
-void InsertTransition(const int &pre_state, const int &post_state, 
-    const int &character, const int &num_states, std::vector<int64_t> &transitions) {
+void InsertTransition(const int &pre_state, const int &character, 
+    const int &post_state, const int &num_states, std::vector<int64_t> &transitions) {
 
     transitions[character*num_states + pre_state] |= (1 << post_state);
 }
@@ -224,11 +224,32 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> character;
                     linestream >> post_state;
 
+                    std::cout << "pre_state=" << pre_state;
+                    std::cout << ", character=" << character;
+                    std::cout << ", post_state=" << post_state << std::endl;
+
                     if (pre_state > 0 && pre_state <= num_states &&
                         character > 0 && character <= alphabet_size &&
                         post_state > 0 && post_state <= num_states) {
                         // Switch from 1-indexing to 0-indexing
                         InsertTransition(--pre_state, --character, --post_state, num_states, transitions);
+
+                    std::cout << "Transitions:\n[ ";
+                        for (int j = 0; j < transitions.size(); j++) {
+                            int64_t t = transitions[j];
+                            if (t != 0) {
+                                int character = j / num_states;
+                                int state = j % num_states;
+                                std::cout << "(" << state+1 << "," << character+1 << ")->{ ";
+                                for (int i = 0; i < num_states; i++) {
+                                    if ((t >> i) & 1 == 1) {
+                                        std::cout << i+1 << " ";
+                                    }
+                                }
+                                std::cout << "} "; 
+                            }
+                        }
+                        std::cout << "]\n";
                     }
                     else { state = INVALID; }
                     transition_count++;
@@ -321,6 +342,8 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
         std::string tree_string = task_queue.front();
         task_queue.pop();
 
+        std::cout << "Analyzing out-transitions from tree " << tree_string << std::endl;
+
         SafraTree *tree = tree_mapping[tree_string].second;
         for (int character = 0; character < alphabet_size; character++) {
 
@@ -336,6 +359,8 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
                     next_tree_label++, transition_tree);
 
                 task_queue.push(transition_string);
+
+                std::cout << "   New tree found: " << transition_string << std::endl;
             }
             // Otherwise, delete the SafraTree pointer (we already have one in
             //   the mapping)
@@ -347,8 +372,8 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
             int pre_label = tree_mapping[tree_string].first;
             int post_label = tree_mapping[transition_string].first;
 
-            std::cout << "T" << pre_label+1 << tree_string << " --" << character + 1
-                      << "--> T" << post_label+1 << transition_string << std::endl;
+            //std::cout << "T" << pre_label+1 << tree_string << " --" << character + 1
+            //          << "--> T" << post_label+1 << transition_string << std::endl;
 
             rabin_transitions[character][pre_label] = post_label;
         }
@@ -436,10 +461,6 @@ void WriteRabin(std::string input_file_name,
 
     for (int i = 0; i < num_labels; i++) {
 
-        std::cout << "checking state #" << i << std::endl;
-
-        std::cout << rabin_rights[i].size() << std::endl;
-
         // Only read a new Rabin pair if the right side isn't empty
         if (!rabin_rights[i].empty()) {
 
@@ -458,7 +479,6 @@ void WriteRabin(std::string input_file_name,
 
             outfile << std::endl;
         }
-        std::cout << "done with state #" << i << std::endl;
     }
 
     outfile << END_RABIN_PAIRS_TAG << std::endl;
@@ -499,6 +519,21 @@ int main(int argc, const char *argv[]) {
         std::cout << "Please look to info.txt for input file format.\n";
         return 1;
     }
+
+    std::cout << "Transitions:\n[ ";
+    for (int j = 0; j < transitions.size(); j++) {
+        int64_t t = transitions[j];
+        int character = j / num_states;
+        int state = j % num_states;
+        std::cout << "(" << state+1 << "," << character+1 << ")->{ ";
+        for (int i = 0; i < num_states; i++) {
+            if ((t >> i) & 1 == 1) {
+                std::cout << i+1 << " ";
+            }
+        }
+        std::cout << "} ";
+    }
+    std::cout << "]\n";
 
     infile.close();
 
