@@ -69,29 +69,12 @@ std::fstream infile, outfile;
 // ============== Helper methods for reading Buechi automaton =============== //
 
 /*
- * Constructs the transition vector based on the given num_states and
- *   alphabet_size
- */
-void InitializeTransitionVector(const int &num_states, const int &alphabet_size,
-    std::vector<std::vector<int64_t> > &transitions) {
-
-    for (int state = 0; state < num_states; state++) {
-        std::vector<int64_t> v;
-        for (int character = 0; character < alphabet_size; character++) {
-            v.push_back(0);
-        }
-        transitions.push_back(v);
-    }
-}
-
-
-/*
  * Insert a transition from state #pre to state #post along character
  */
-void InsertTransition(const int &pre_state, const int &post_state,
-    const int &character, std::vector<std::vector<int64_t> > &transitions) {
+void InsertTransition(const int &pre_state, const int &character, 
+    const int &post_state, const int &num_states, std::vector<int64_t> &transitions) {
 
-    transitions[pre_state][character] |= (1 >> post_state);
+    transitions[character*num_states + pre_state] |= (1 << post_state);
 }
 
 
@@ -101,7 +84,7 @@ void InsertTransition(const int &pre_state, const int &post_state,
  *   produced a full, valid Buechi automaton, and false otherwise.
  */
 bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
-    int64_t &final_states, std::vector<std::vector<int64_t> > &transitions) {
+    int64_t &final_states, std::vector<int64_t> &transitions) {
 
     // Possible read states we can be in
     enum ReadState {
@@ -189,7 +172,7 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     // If we have both num_states and alphabet_size, construct
                     //   our transition vector
                     if (alphabet_size > 0 && num_states > 0) {
-                        InitializeTransitionVector(num_states, alphabet_size, transitions);
+                        transitions = std::vector<int64_t>(alphabet_size*num_states, 0);
                     }
                 }
                 break;
@@ -205,8 +188,8 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
 
                     // If we have both num_states and alphabet_size, construct
                     //   our transition vector
-                    if (alphabet_size > 0 && num_states >= 0) {
-                        InitializeTransitionVector(num_states, alphabet_size, transitions);
+                    if (alphabet_size > 0 && num_states > 0) {
+                        transitions = std::vector<int64_t>(alphabet_size*num_states, 0);
                     }
                 }
                 break;
@@ -241,11 +224,32 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
                     linestream >> character;
                     linestream >> post_state;
 
+                    std::cout << "pre_state=" << pre_state;
+                    std::cout << ", character=" << character;
+                    std::cout << ", post_state=" << post_state << std::endl;
+
                     if (pre_state > 0 && pre_state <= num_states &&
                         character > 0 && character <= alphabet_size &&
                         post_state > 0 && post_state <= num_states) {
                         // Switch from 1-indexing to 0-indexing
-                        InsertTransition(--pre_state, --character, --post_state, transitions);
+                        InsertTransition(--pre_state, --character, --post_state, num_states, transitions);
+
+                    std::cout << "Transitions:\n[ ";
+                        for (int j = 0; j < transitions.size(); j++) {
+                            int64_t t = transitions[j];
+                            if (t != 0) {
+                                int character = j / num_states;
+                                int state = j % num_states;
+                                std::cout << "(" << state+1 << "," << character+1 << ")->{ ";
+                                for (int i = 0; i < num_states; i++) {
+                                    if ((t >> i) & 1 == 1) {
+                                        std::cout << i+1 << " ";
+                                    }
+                                }
+                                std::cout << "} "; 
+                            }
+                        }
+                        std::cout << "]\n";
                     }
                     else { state = INVALID; }
                     transition_count++;
@@ -304,11 +308,11 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
 /*
  * Runs Safra's algorithm on the provided Buechi automaton.
  */
-void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
-    int64_t final_states, std::vector<std::vector<int64_t> > transitions) {
-
-    // tree_mapping : (string representation of tree -> label, SafraTree ptr)
-    std::unordered_map<std::string, std::pair<int, SafraTree *> > tree_mapping = *(new std::unordered_map<std::string, std::pair<int, SafraTree *> >);
+std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_size,
+    int64_t initial_states, int64_t final_states,
+    std::vector<int64_t> transitions,
+    std::unordered_set<int> *rabin_lefts, std::unordered_set<int> *rabin_rights,
+    std::unordered_map<std::string, std::pair<int, SafraTree *>> &tree_mapping) {
 
     // task_queue contains strings for all trees whose transitions have not
     //   been computed yet
@@ -316,26 +320,20 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
     int next_tree_label = 0;
 
     // build initially empty Rabin transition table
-    std::vector<std::vector<int> > rabin_transitions;
-
-    for (int pre_state = 0; pre_state < num_states; pre_state++) {
-        std::vector<int> v;
-        for (int character = 0; character < alphabet_size; character++) {
-            v.push_back(-1);
-        }
-        rabin_transitions.push_back(v);
+    std::vector<std::unordered_map<int, int>> rabin_transitions;
+    for (int i = 0; i < alphabet_size; i++) {
+        rabin_transitions.push_back({});
     }
-
 
     // Create initial tree, add it to task queue & tree_mapping
 
     SafraTree *initial_tree = new SafraTree(num_states, alphabet_size,
         transitions, initial_states, final_states);
+
     std::string initial_string = initial_tree->ToString();
 
     tree_mapping[initial_string] = std::make_pair(next_tree_label++, initial_tree);
     task_queue.push(initial_string);
-
 
     // Keep processing trees until the task queue is empty
 
@@ -343,6 +341,8 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
 
         std::string tree_string = task_queue.front();
         task_queue.pop();
+
+        std::cout << "Analyzing out-transitions from tree " << tree_string << std::endl;
 
         SafraTree *tree = tree_mapping[tree_string].second;
         for (int character = 0; character < alphabet_size; character++) {
@@ -359,28 +359,31 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
                     next_tree_label++, transition_tree);
 
                 task_queue.push(transition_string);
+
+                std::cout << "   New tree found: " << transition_string << std::endl;
             }
             // Otherwise, delete the SafraTree pointer (we already have one in
             //   the mapping)
-            else { delete transition_tree; }
+            else {
+                delete transition_tree;
+            }
 
             // In either case, add a transition into rabin_transitions
             int pre_label = tree_mapping[tree_string].first;
             int post_label = tree_mapping[transition_string].first;
-            rabin_transitions[pre_label][character] = post_label;
+
+            //std::cout << "T" << pre_label+1 << tree_string << " --" << character + 1
+            //          << "--> T" << post_label+1 << transition_string << std::endl;
+
+            rabin_transitions[character][pre_label] = post_label;
         }
     }
 
     // We now have all of the states and transitions in our Rabin automaton;
     //   all that remains is to compute the Rabin pairs
-
-    std::unordered_set<int> *rabin_lefts  = new std::unordered_set<int>[2*num_states];
-    std::unordered_set<int> *rabin_rights  = new std::unordered_set<int>[2*num_states];
-
+    
     // iterates over (string, (int, SafraTree*)) objects
     for (auto mapping_pair : tree_mapping) {
-
-        std::string tree_string = mapping_pair.first;
 
         int tree_label = mapping_pair.second.first;
         SafraTree *tree = mapping_pair.second.second;
@@ -399,11 +402,17 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
                 rabin_lefts[i].insert(tree_label);
             }
         }
+
+        // Delete state_info
+        for (int i = 0; i < 2*num_states; i++) {
+            delete[] state_info[i];
+        }
+        delete[] state_info;   
     }
 
     // Now Rabin rights and Rabin lefts should be initialized correctly
     // where matching indices correspond to pairs
-
+    return rabin_transitions;
 }
 
 
@@ -413,19 +422,19 @@ void RunSafra(int num_states, int alphabet_size, int64_t initial_states,
  * Writes the contents of the computed Rabin automaton to the specified output
  *   file stream.
  */
-void WriteRabin() {
-
-    std::string input_file_name;
-    int num_states, alphabet_size, initial_state, num_transitions;
-    std::vector<std::vector<int> > transitions;
-    std::vector<std::pair<std::set<int>, std::set<int> > > rabin_pairs;
+void WriteRabin(std::string input_file_name,
+    int num_rabin_states, int alphabet_size, int num_labels,
+    int initial_state, int num_transitions,
+    std::vector<std::unordered_map<int, int>> transitions,
+    std::unordered_set<int> *rabin_lefts,
+    std::unordered_set<int> *rabin_rights) {
 
     outfile << "RABIN" << std::endl;
     outfile << RABIN_INFILE_TAG << std::endl;
     outfile << input_file_name << std::endl;
 
     outfile << NUM_STATES_TAG << std::endl;
-    outfile << num_states << std::endl;
+    outfile << num_rabin_states << std::endl;
 
     outfile << ALPHABET_SIZE_TAG << std::endl;
     outfile << alphabet_size << std::endl;
@@ -434,17 +443,46 @@ void WriteRabin() {
     outfile << num_transitions << std::endl;
 
     outfile << BEGIN_TRANSITIONS_TAG << std::endl;
-    for (int pre_state = 0; pre_state < transitions.size(); pre_state++) {
-        for (int character = 0; character < transitions[pre_state].size(); character++) {
-            int post_state = transitions[pre_state][character];
-
-            outfile << (pre_state + 1) << " " << (character + 1) << " "
-                    << (post_state + 1) << std::endl;
+        
+    for (int c = 0; c < transitions.size(); c++) {
+        for (auto mapping_pair : transitions[c]) {
+            outfile << mapping_pair.first+1 << " ";
+            outfile << c+1 << " ";
+            outfile << mapping_pair.second+1 << std::endl;
         }
     }
 
     outfile << END_TRANSITIONS_TAG << std::endl;
 
+    outfile << RABIN_INITIAL_STATE_TAG << std::endl;
+    outfile << initial_state+1 << std::endl;
+
+    outfile << BEGIN_RABIN_PAIRS_TAG << std::endl;
+
+    for (int i = 0; i < num_labels; i++) {
+
+        // Only read a new Rabin pair if the right side isn't empty
+        if (!rabin_rights[i].empty()) {
+
+            // Write every left label
+            for (int left : rabin_lefts[i]) {
+                outfile << left+1 << " ";
+            }
+
+            // Insert divider
+            outfile << "| ";
+
+            // Write every right label
+            for (int right : rabin_rights[i]) {
+                outfile << right+1 << " ";
+            }
+
+            outfile << std::endl;
+        }
+    }
+
+    outfile << END_RABIN_PAIRS_TAG << std::endl;
+    outfile << RABIN_EOF_TAG << std::endl;
 }
 
 
@@ -472,7 +510,7 @@ int main(int argc, const char *argv[]) {
 
     int num_states, alphabet_size;
     int64_t initial_states, final_states;
-    std::vector<std::vector<int64_t> > transitions;
+    std::vector<int64_t> transitions;
 
     if (!ReadBeuchi(num_states, alphabet_size, initial_states,
         final_states, transitions)) {
@@ -482,13 +520,43 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
+    std::cout << "Transitions:\n[ ";
+    for (int j = 0; j < transitions.size(); j++) {
+        int64_t t = transitions[j];
+        int character = j / num_states;
+        int state = j % num_states;
+        std::cout << "(" << state+1 << "," << character+1 << ")->{ ";
+        for (int i = 0; i < num_states; i++) {
+            if ((t >> i) & 1 == 1) {
+                std::cout << i+1 << " ";
+            }
+        }
+        std::cout << "} ";
+    }
+    std::cout << "]\n";
+
     infile.close();
 
     // ======================= RUN SAFRA'S ALGORITHM ======================== //
 
     std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
 
-    RunSafra(num_states, alphabet_size, initial_states, final_states, transitions);    
+    std::cout << "# of possible labels: " << 2*num_states << std::endl;
+
+    std::unordered_set<int> *rabin_lefts = new std::unordered_set<int>[2*num_states];
+    std::unordered_set<int> *rabin_rights = new std::unordered_set<int>[2*num_states];
+
+    for (int i = 0; i < 2*num_states; i++) {
+        rabin_lefts[i] = std::unordered_set<int>();
+        rabin_rights[i] = std::unordered_set<int>();
+    }
+
+    // tree_mapping : (string representation of tree -> label, SafraTree ptr)
+    std::unordered_map<std::string, std::pair<int, SafraTree *>> tree_mapping = {};
+
+
+    auto rabin_transitions = RunSafra(num_states, alphabet_size, initial_states,
+        final_states, transitions, rabin_lefts, rabin_rights, tree_mapping);    
 
     std::cout << "num_states=" << num_states << ", alphabet_size=" << alphabet_size << "\n";
     std::cout << "initial_states=" << std::hex << initial_states;
@@ -506,7 +574,17 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
+    WriteRabin(argv[1], tree_mapping.size(), alphabet_size, 2*num_states, 0, 
+        alphabet_size*tree_mapping.size(), rabin_transitions, rabin_lefts,
+        rabin_rights);
 
+    std::cout << "delete?\n";
+
+    // Clear out any leftover pointers
+    delete[] rabin_lefts;
+    delete[] rabin_rights;
+
+    std::cout << "done!\n";
 
     // Close output file
     outfile.close();
