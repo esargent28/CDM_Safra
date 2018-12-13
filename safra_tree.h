@@ -53,7 +53,7 @@ private:
 
         // Constructor & Destructor
         SafraNode(const int64_t &states, const bool &marked, SafraTree *tree);
-        SafraNode(SafraNode *other);
+        SafraNode(SafraNode *other, SafraTree *my_tree);
         ~SafraNode();
 
         // Access methods for member variables
@@ -118,8 +118,7 @@ private:
     void CopyChildren(SafraNode *node, SafraNode *other_node,
         std::unordered_set<int> &used_labels);
 
-    // Static helper methods
-    int64_t MakeBitvector(std::set<int> states);
+    std::vector<std::vector<int64_t>> CopyTransitions(std::vector<std::vector<int64_t>> other_transitions);
 
     // Implementation of set functions using bitvector implementation
     static int64_t Union(const int64_t &x, const int64_t &y);

@@ -344,9 +344,14 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
         SafraTree *tree = tree_mapping[tree_string].second;
         for (int character = 0; character < alphabet_size; character++) {
 
+            std::cout << "character=" << character << std::endl;
+
             // Find the resulting tree for each character
             SafraTree *transition_tree = new SafraTree(tree, character);
+            std::cout << "made tree ptr\n";
             std::string transition_string = transition_tree->ToString();
+
+            std::cout << "made tree string\n";
 
             // If it's not in the mapping already, add it into the mapping and
             //   task queue
@@ -356,11 +361,13 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
                     next_tree_label++, transition_tree);
 
                 task_queue.push(transition_string);
+
+            std::cout << " *** found new tree " << transition_string << " ***\n";
             }
             // Otherwise, delete the SafraTree pointer (we already have one in
             //   the mapping)
             else {
-                std::cout << " === deleting redundant tree " << transition_tree->ToString() << " ===\n";
+                std::cout << " === deleting redundant tree " << transition_string << " ===\n";
                 delete transition_tree;
             }
 

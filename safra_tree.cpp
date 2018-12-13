@@ -38,14 +38,25 @@ SafraTree::SafraTree(int num_states, int alphabet_size,
     int64_t final_states) {
 
     num_states_ = num_states;
-    transition_rule_ = transition;
+    transition_rule_ = CopyTransitions(transition);
     initial_states_ = initial_states;
     final_states_ = final_states;
 
+    std::cout << "original constructor: [ ";
+    for (int pre_state = 0; pre_state < num_states_; pre_state++) {
+        std::cout << "[ ";
+        for (int c = 0; c < transition_rule_[pre_state].size(); c++) {
+            std::cout << c << " ";
+        }
+        std::cout << "] ";
+    }
+    std::cout << "]\n";
+
     unused_labels_ = new std::priority_queue<int, std::vector<int>, std::greater<int>>();
+    std::cout << "*** NEW UNUSED LABELS: " << unused_labels_ << " ***\n";
 
     //initialize priority queue that contains every number from 1 to 2*n
-    for (int i = 1; i <= 2*num_states_; i++) {
+    for (int i = 0; i < 2*num_states_; i++) {
         unused_labels_->push(i);
     }
 
@@ -78,7 +89,7 @@ void SafraTree::CopyChildren(SafraNode *node, SafraNode *other_node,
     for (SafraNode *other_child : other_node->GetChildren()) {
         // Add label into our used set, append an identical child to our node
         used_labels.insert(other_child->GetLabel());
-        SafraNode *child = new SafraNode(other_child);
+        SafraNode *child = new SafraNode(other_child, this);
 
         std::cout << "copy constructor append child\n";
         node->AppendChild(child);
@@ -98,42 +109,53 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
 
     // Part 1: Copy tree structure over
 
-    std::unordered_set<int> used_labels = *(new std::unordered_set<int>());
+    std::unordered_set<int> used_labels;
 
     // Copy over data about automaton
     initial_states_ = original->initial_states_;
     final_states_ = original->final_states_;
     int num_states_ = original->num_states_;
-    transition_rule_ = original->transition_rule_;
+    transition_rule_ = CopyTransitions(original->transition_rule_);
+
+    std::cout << "copy constructor: [ ";
+    for (int pre_state = 0; pre_state < num_states_; pre_state++) {
+        std::cout << "[ ";
+        for (int c = 0; c < transition_rule_[pre_state].size(); c++) {
+            std::cout << c << " ";
+        }
+        std::cout << "] ";
+    }
+    std::cout << "]\n";
 
     // Copy nodes over, keeping track of which labels have been used
-    root_ = new SafraNode(original->root_);
+    root_ = new SafraNode(original->root_, this);
     used_labels.insert(root_->GetLabel());
 
     // Build unused_labels_ priority queue (only contains things not in our
     //   used_labels set)
     unused_labels_ = new std::priority_queue<int, std::vector<int>, std::greater<int>>();
+    std::cout << "*** NEW UNUSED LABELS: " << unused_labels_ << " ***\n";
 
-    for (int i = 1; i <= 2*num_states_; i++) {
+    for (int i = 0; i < 2*num_states_; i++) {
         if (used_labels.find(i) == used_labels.end()) {
             unused_labels_->push(i);
         }
     }
 
     // Part 2: Run all 6 steps new tree
-    //std::cout << "1";
+    std::cout << "1: " << ToString() << "\n";
     UnmarkAllNodes();
-    //std::cout << "2";
+    std::cout << "2: " << ToString() << "\n";
     UpdateStateSets(character);
-    //std::cout << "3";
+    std::cout << "3: " << ToString() << "\n";
     AttachChildren();
-    //std::cout << "4";
+    std::cout << "4: " << ToString() << "\n";
     HorizontalMerge();
-    //std::cout << "5";
+    std::cout << "5: " << ToString() << "\n";
     KillEmptyNodes();
-    //std::cout << "6";
+    std::cout << "6: " << ToString() << "\n";
     VerticalMerge();
-    //std::cout << "!\n";
+    std::cout << "!: " << ToString() << "\n";
 }
 
 /*
@@ -146,12 +168,30 @@ SafraTree::~SafraTree() {
     // free root and all its children
     delete root_;
 
+    std::cout << "*** DELETE UNUSED LABELS: " << unused_labels_ << " ***\n";
     // free priority queue
     delete unused_labels_;
 }
 
 
+
+// ========================================================================== //
 // ============= Public methods for each step of the algorithm ============== //
+// ========================================================================== //
+
+
+/*
+ * Safra's Algorithm Step 1: Unmarking All Nodes
+ *  For the current node N, unmarks N and all nodes in the subtree rooted at N
+ */
+void SafraTree::SafraNode::UnmarkAll() {
+
+    SetMarked(false);
+    for (SafraNode *child : children_) {
+        child->UnmarkAll();
+    }
+}
+
 
 /*
  * STEP 1: Unmarks all nodes in the Safra tree
@@ -159,6 +199,28 @@ SafraTree::~SafraTree() {
 void SafraTree::UnmarkAllNodes() {
     GetRoot()->UnmarkAll();
 }
+
+/*
+ * Safra's Algorithm Step 2: Transitioning State Sets
+ *   For the current node N, replaces N's state set with its out-neighbors
+ *   according to the transition rule.
+ */
+void SafraTree::SafraNode::TransitionStates(const int &c) {
+
+    int64_t new_states = 0;
+
+    for (int i = 0; i < tree_->num_states_; i++) {
+        if ((states_ << i) & 1 == 1) {
+            new_states = tree_->Union(new_states, tree_->Transition(i, c));
+        }
+    }
+
+    SetStates(new_states);
+    for (SafraNode *child : children_) {
+        child->TransitionStates(c);
+    }
+}
+
 
 /*
  * STEP 2: For every node in the tree, replaces the label set according to the
@@ -171,10 +233,16 @@ void SafraTree::UpdateStateSets(const int &c) {
 void SafraTree::SafraNode::CreateChild() {
     int64_t parent_states = GetStates();
 
+    std::cout << GetTree() << "\n";
+
     int64_t child_states = Union(parent_states, GetTree()->final_states_);
 
-    if (child_states == EMPTY_SET)
+    std::cout << "union?\n";
+
+    if (child_states == EMPTY_SET) {
+        std::cout << "empty state set\n";
         return;
+    }
 
     bool child_is_marked = true;
 
@@ -339,22 +407,6 @@ bool **SafraTree::GetLabelInfo(int num_labels) {
 
 // ========================= Private helper methods ========================= //
 
-/*
- * Given a set of states (which is a subset of {0, 1, ..., 63}), creates a
- *   bitvector where state i is in the set if and only if the ith bit of the
- *   resulting bitvector is 1
- */
-int64_t SafraTree::MakeBitvector(std::set<int> states) {
-
-    int64_t bitvector = 0;
-
-    for (int state : states) {
-        bitvector |= (1 << state);
-    }
-
-    return bitvector;
-}
-
 int64_t SafraTree::Transition(const int &state, const int &character) {
     return transition_rule_[state][character];
 }
@@ -382,6 +434,17 @@ SafraTree::SafraNode *SafraTree::GetRoot() {
     return root_;
 }
 
+std::vector<std::vector<int64_t>> SafraTree::CopyTransitions(
+    std::vector<std::vector<int64_t>> other_transitions) {
+
+    std::vector<std::vector<int64_t>> new_transitions;
+    for (int i = 0; i < other_transitions.size(); i++) {
+        new_transitions.push_back(std::vector<int64_t>(other_transitions[i]));
+    }
+    return new_transitions;
+}
+
+
 // ========================================================================== //
 // ======================= SAFRA NODE IMPLEMENTATION ======================== //
 // ========================================================================== //
@@ -389,18 +452,21 @@ SafraTree::SafraNode *SafraTree::GetRoot() {
 
 // =================== SafraNode Constructor & Destructor =================== //
 
-SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked, SafraTree *tree) {
+SafraTree::SafraNode::SafraNode(const int64_t &states, const bool &marked,
+    SafraTree *tree) {
 
     tree_ = tree;
     states_ = states;
+    std::cout << "Grabbing new label from " << GetTree()->unused_labels_ << "\n";
     label_ = GetTree()->GetNewLabel();
+    std::cout << "Grabbed new label\n";
     marked_ = marked;
 }
 
 
-SafraTree::SafraNode::SafraNode(SafraNode *other) {
+SafraTree::SafraNode::SafraNode(SafraNode *other, SafraTree *my_tree) {
 
-    tree_ = other->tree_;
+    tree_ = my_tree;
     states_ = other->states_;
     label_ = other->label_;
     marked_ = other->marked_;
@@ -468,43 +534,6 @@ void SafraTree::SafraNode::EraseChild(const int &i) {
 
 SafraTree *SafraTree::SafraNode::GetTree() {
     return tree_;
-}
-
-
-// ============== Node methods for steps of Safra's Algorithm =============== //
-
-/*
- * Safra's Algorithm Step 1: Unmarking All Nodes
- *  For the current node N, unmarks N and all nodes in the subtree rooted at N
- */
-void SafraTree::SafraNode::UnmarkAll() {
-
-    SetMarked(false);
-    for (SafraNode *child : children_) {
-        child->UnmarkAll();
-    }
-}
-
-
-/*
- * Safra's Algorithm Step 2: Transitioning State Sets
- *   For the current node N, replaces N's state set with its out-neighbors
- *   according to the transition rule.
- */
-void SafraTree::SafraNode::TransitionStates(const int &c) {
-
-    int64_t new_states = 0;
-
-    for (int i = 0; i < tree_->num_states_; i++) {
-        if ((states_ << i) & 1 == 1) {
-            new_states = tree_->Union(new_states, tree_->Transition(i, c));
-        }
-    }
-
-    SetStates(new_states);
-    for (SafraNode *child : children_) {
-        child->TransitionStates(c);
-    }
 }
 
 
