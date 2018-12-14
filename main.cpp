@@ -36,7 +36,8 @@
 #define RABIN_INITIAL_STATE_TAG "# Rabin initial"
 #define BEGIN_RABIN_PAIRS_TAG "# begin Rabin pairs"
 #define END_RABIN_PAIRS_TAG "# end Rabin pairs"
-#define SAFRA_TREES_TAG "# Safra trees"
+#define BEGIN_SAFRA_TREES_TAG "# begin Safra trees"
+#define END_SAFRA_TREES_TAG "# end Safra trees"
 #define RABIN_EOF_TAG "# Rabin eof"
 
 // Buffer to hold 
@@ -45,30 +46,9 @@ char buffer[100];
 // Input & output file streams
 std::fstream infile, outfile;
 
-/*
- *  Overall algorithm logic: 
- *  
- *  T0 = initial Safra tree based on automaton input
- *  tree_set = { T0 }
- *  transition_set = { }
- *  tree_queue = [T0]
- *  deterministic automaton has state T
- *
- *  while tree queue is not empty:
- *      T = tree_queue.front();
- *      for c in alphabet:
- *          T' = safra_transition(T, c)
- *          if (T' not in tree_set):
- *              tree_set.insert(T')
- *              tree_queue.push(T')
- *          transition_set.insert(T,c -> T')
- *  
- *  Determine Rabin pairs based on trees in tree_set
- *  Return automaton based on tree_set, transition_set, and Rabin pairs
- */
-
-
-// ============== Helper methods for reading Buechi automaton =============== //
+// ========================================================================== //
+// ========== PART 1 : Parsing input file to get Buechi automaton =========== //
+// ========================================================================== //
 
 /*
  * Insert a transition from state #pre to state #post along character
@@ -284,7 +264,10 @@ bool ReadBeuchi(int &num_states, int &alphabet_size, int64_t &initial_states,
     return (state == DONE);
 }
 
-// ============== Helper methods for running Safra's Algorithm ============== //
+
+// ========================================================================== //
+// ======= Part 2 : Running Safra's algorithm to get Rabin automaton ======== //
+// ========================================================================== //
 
 /*
  * Runs Safra's algorithm on the provided Buechi automaton.
@@ -390,15 +373,20 @@ std::vector<std::unordered_map<int, int>> RunSafra(int num_states, int alphabet_
 }
 
 
-// ====== Helper methods for writing Rabin automaton to output stream ======= //
+// ========================================================================== //
+// ===== Part 3: Writing Rabin automaton & Safra trees to output file ======= //
+// ========================================================================== //
 
 /*
  * Writes the contents of the computed Rabin automaton to the specified output
  *   file stream.
  */
 void WriteRabin(std::string input_file_name,
-    int num_rabin_states, int alphabet_size, int num_labels,
-    int initial_state, int num_transitions,
+    int num_rabin_states,
+    int alphabet_size,
+    int num_labels,
+    int initial_state,
+    int num_transitions,
     std::vector<std::unordered_map<int, int>> transitions,
     std::unordered_set<int> *rabin_lefts,
     std::unordered_set<int> *rabin_rights,
@@ -421,8 +409,8 @@ void WriteRabin(std::string input_file_name,
         
     for (int c = 0; c < transitions.size(); c++) {
         for (auto mapping_pair : transitions[c]) {
-            outfile << mapping_pair.first+1 << " ";
-            outfile << c+1 << " ";
+            outfile << mapping_pair.first+1 << "  ";
+            outfile << c+1 << "  ";
             outfile << mapping_pair.second+1 << std::endl;
         }
     }
@@ -458,19 +446,21 @@ void WriteRabin(std::string input_file_name,
     }
 
     outfile << END_RABIN_PAIRS_TAG << std::endl;
-
-    outfile << SAFRA_TREES_TAG << std::endl;
+    outfile << BEGIN_SAFRA_TREES_TAG << std::endl;
 
     std::map<int, std::string> ordered_tree_mapping = {};
 
     for (auto mapping_pair : tree_mapping) {
-        ordered_tree_mapping.insert(std::make_pair(mapping_pair.second.first, mapping_pair.first));
+        ordered_tree_mapping.insert(
+            std::make_pair(mapping_pair.second.first, mapping_pair.first));
     }
 
     for (auto ordered_mapping_pair : ordered_tree_mapping) {
-        outfile << ordered_mapping_pair.first+1 << ": " << ordered_mapping_pair.second << std::endl;
+        outfile << ordered_mapping_pair.first+1 << ": ";
+        outfile << ordered_mapping_pair.second << std::endl;
     }
 
+    outfile << END_SAFRA_TREES_TAG << std::endl;
     outfile << RABIN_EOF_TAG << std::endl;
 }
 
@@ -515,8 +505,10 @@ int main(int argc, const char *argv[]) {
 
     std::cout << "Extraction done. Running Safra's algorithm..." << std::endl;
 
-    std::unordered_set<int> *rabin_lefts = new std::unordered_set<int>[2*num_states];
-    std::unordered_set<int> *rabin_rights = new std::unordered_set<int>[2*num_states];
+    std::unordered_set<int> *rabin_lefts =
+        new std::unordered_set<int>[2*num_states];
+    std::unordered_set<int>
+        *rabin_rights = new std::unordered_set<int>[2*num_states];
 
     for (int i = 0; i < 2*num_states; i++) {
         rabin_lefts[i] = std::unordered_set<int>();
@@ -525,7 +517,6 @@ int main(int argc, const char *argv[]) {
 
     // tree_mapping : (string representation of tree -> label, SafraTree ptr)
     std::unordered_map<std::string, std::pair<int, SafraTree *>> tree_mapping = {};
-
 
     auto rabin_transitions = RunSafra(num_states, alphabet_size, initial_states,
         final_states, transitions, rabin_lefts, rabin_rights, tree_mapping);    
@@ -554,10 +545,10 @@ int main(int argc, const char *argv[]) {
         delete mapping_pair.second.second;
     }
 
-    std::cout << "Done. Closing file...\n";
-
     // Close output file
     outfile.close();
+
+    std::cout << "Done.\n";
 
     return 0;
 }
