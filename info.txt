@@ -12,7 +12,8 @@
 // ================================== USAGE ================================= //
 // ========================================================================== //
 
-To run our implementation on a single input file / machine:
+To run our implementation on a single input file / machine, move into the
+'CDM_Safra' directory, and then:
  - First, if the code has not already been compiled, run 'make' to compile the
     command-line application.
  - Then, run './safra <inputfilename> <outputfilename>' to read the Buechi
@@ -21,7 +22,7 @@ To run our implementation on a single input file / machine:
     section for more information about the file formats.
  
 A script has been included to run our Safra implementation on all of the test
-machines provided. To run all tests, run './run_tests.sh'.
+machines provided. To run all tests, run './run_tests.sh' in 'CDM_Safra'.
  
 // ========================================================================== //
 // =========================== INPUT FILE FORMAT ============================ //
