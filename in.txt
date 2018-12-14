@@ -1,8 +1,0 @@
-TEST FILE FOR I/O PURPOSES
-newline
-
-# Number of states
-
-1 1 2
-
-3 5 2

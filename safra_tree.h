@@ -30,6 +30,8 @@ public:
     SafraTree(SafraTree *original, const int &character);
     ~SafraTree();
 
+    void UnmarkAndUpdateAll(const int &c);
+
     // Public methods for each step of the algorithm
     void UnmarkAllNodes();              // (1)
     void UpdateStateSets(const int &c); // (2)
@@ -76,6 +78,8 @@ private:
         std::string StringifyChildren();
 
         void RecursiveRemoveFromStates(int64_t r_states);
+
+        void UnmarkAndUpdate(const int &c);
 
         // Methods for steps of Safra's Algorithm
         void UnmarkAll();

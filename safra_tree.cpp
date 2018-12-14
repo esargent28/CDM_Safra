@@ -25,7 +25,6 @@
 int BITS_PER_ITEM = 64;
 int64_t EMPTY_SET = 0;
 
-
 // ========== Standard constructor, copy constructor, & destructor ========== //
 
 /*
@@ -122,8 +121,7 @@ SafraTree::SafraTree(SafraTree *original, const int &character) {
     }
 
     // Part 2: Run all 6 steps on the new tree
-    UnmarkAllNodes();
-    UpdateStateSets(character);
+    UnmarkAndUpdateAll(character);
     AttachChildren();
     HorizontalMerge();
     KillEmptyNodes();
@@ -150,79 +148,31 @@ SafraTree::~SafraTree() {
 
 
 /*
- * Safra's Algorithm Step 1: Unmarking All Nodes
- *  For the current node N, unmarks N and all nodes in the subtree rooted at N
+ * Step 1: Unmark all nodes in the tree
+ * Step 2: Update all state sets in the tree according to the Buechi automaton's
+ *   transition system
  */
-void SafraTree::SafraNode::UnmarkAll() {
+
+void SafraTree::SafraNode::UnmarkAndUpdate(const int &c) {
 
     SetMarked(false);
-    for (SafraNode *child : children_) {
-        child->UnmarkAll();
-    }
-}
-
-
-/*
- * STEP 1: Unmarks all nodes in the Safra tree
- */
-void SafraTree::UnmarkAllNodes() {
-    GetRoot()->UnmarkAll();
-}
-
-/*
- * Safra's Algorithm Step 2: Transitioning State Sets
- *   For the current node N, replaces N's state set with its out-neighbors
- *   according to the transition rule.
- */
-void SafraTree::SafraNode::TransitionStates(const int &c) {
-
     int64_t new_states = 0;
-
     for (int i = 0; i < tree_->num_states_; i++) {
         if ((states_ >> i) & 1 == 1) {
             new_states = tree_->Union(new_states, tree_->Transition(i, c));
         }
     }
-
     SetStates(new_states);
+
     for (SafraNode *child : children_) {
-        child->TransitionStates(c);
+        child->UnmarkAndUpdate(c);
     }
 }
 
-
-/*
- * STEP 2: For every node in the tree, replaces the label set according to the
- *   automaton's transition rules
- */
-void SafraTree::UpdateStateSets(const int &c) {
-    GetRoot()->TransitionStates(c);
+void SafraTree::UnmarkAndUpdateAll(const int &c) {
+    GetRoot()->UnmarkAndUpdate(c);
 }
 
-void SafraTree::SafraNode::CreateChild() {
-    int64_t parent_states = GetStates();
-
-    int64_t child_states = Intersect(parent_states, GetTree()->final_states_);
-
-    if (child_states == EMPTY_SET) {
-        return;
-    }
-
-    bool child_is_marked = true;
-
-    SafraNode *child_node = new SafraNode(child_states, child_is_marked,
-        GetTree());
-
-    AppendChild(child_node);
-}
-
-void SafraTree::SafraNode::AttachChildrenToAllNodes() {
-
-    for (SafraNode *child : GetChildren()) {
-        child->AttachChildrenToAllNodes();
-    }
-    CreateChild();
-}
 
 /*
  * STEP 3: For every node v, if v's label set shares at least one state with
@@ -230,22 +180,37 @@ void SafraTree::SafraNode::AttachChildrenToAllNodes() {
  *   of u to the intersection between v's label set and the final states, and
  *   mark u.
  */
+
+void SafraTree::SafraNode::CreateChild() {
+
+    int64_t parent_states = GetStates();
+    int64_t child_states = Intersect(parent_states, GetTree()->final_states_);
+
+    if (child_states != EMPTY_SET) {
+
+        bool child_is_marked = true;
+        SafraNode *child = new SafraNode(child_states, child_is_marked,
+            GetTree());
+        AppendChild(child);
+    }
+}
+
+void SafraTree::SafraNode::AttachChildrenToAllNodes() {
+    for (SafraNode *child : GetChildren()) {
+        child->AttachChildrenToAllNodes();
+    }
+    CreateChild();
+}
+
+
 void SafraTree::AttachChildren() {
     GetRoot()->AttachChildrenToAllNodes();
 }
 
-void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
-
-    int64_t seen_states = EMPTY_SET;
-
-    for (SafraNode *child : GetChildren()) {
-
-        int64_t child_states = child->GetStates();
-        child->RecursiveRemoveFromStates(seen_states);
-        seen_states = Union(seen_states, child_states);\
-    }
-}
-
+/*
+ * STEP 4: For all new nodes u, remove all states in u's label set (as well as
+ *   the state sets of u's children) that already appear in u's older siblings.
+ */
 void SafraTree::SafraNode::RecursiveRemoveFromStates(int64_t r_states) {
 
     SetStates(Difference(GetStates(), r_states));
@@ -254,6 +219,19 @@ void SafraTree::SafraNode::RecursiveRemoveFromStates(int64_t r_states) {
         child->RecursiveRemoveFromStates(r_states);
     }
 }
+
+void SafraTree::SafraNode::HorizontalMergeNodeLevel() {
+
+    int64_t seen_states = EMPTY_SET;
+
+    for (SafraNode *child : GetChildren()) {
+        int64_t child_states = child->GetStates();
+        child->RecursiveRemoveFromStates(seen_states);
+        seen_states = Union(seen_states, child_states);
+    }
+}
+
+
 
 void SafraTree::SafraNode::HorizontalMergeAllNodes() {
 
@@ -264,15 +242,14 @@ void SafraTree::SafraNode::HorizontalMergeAllNodes() {
     HorizontalMergeNodeLevel();
 }
 
-/*
- * STEP 4: For all new nodes u, remove all states in u's label set that already
- *   appear in nodes to the left of u.
- */
+
 void SafraTree::HorizontalMerge() {
     GetRoot()->HorizontalMergeAllNodes();
 }
 
-
+/*
+ * STEP 5: Remove all nodes with empty label sets.
+ */
 void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
 
     int i = 0;
@@ -289,19 +266,23 @@ void SafraTree::SafraNode::KillEmptyNodesNodeLevel() {
     }
 }
 
-/*
- * STEP 5: Remove all nodes with empty label sets.
- */
+
 void SafraTree::KillEmptyNodes() {
     GetRoot()->KillEmptyNodesNodeLevel();
 }
 
+
+/*
+ * STEP 6: Mark all states v such that v's label set is the union of all of its
+ *   children's label sets
+ */
 void SafraTree::SafraNode::VerticalMergeNodeLevel() {
 
     int64_t all_children_states = EMPTY_SET;
 
-    if (GetStates() == EMPTY_SET)
+    if (GetStates() == EMPTY_SET) {
         return;
+    }
 
     for (SafraNode *child : GetChildren()) {
         all_children_states = Union(all_children_states, child->GetStates());
@@ -326,10 +307,7 @@ void SafraTree::SafraNode::VerticalMergeNodeLevel() {
     }
 }
 
-/*
- * STEP 6: Mark all states v such that v's label set is the union of all of its
- *   children's label sets
- */
+
 void SafraTree::VerticalMerge() {
     GetRoot()->VerticalMergeNodeLevel();
 }
@@ -403,7 +381,6 @@ int64_t SafraTree::GetInitialStates() {
 SafraTree::SafraNode *SafraTree::GetRoot() {
     return root_;
 }
-
 
 
 // ========================================================================== //
@@ -532,7 +509,6 @@ std::string SafraTree::SafraNode::ToString() {
     std::ostringstream stream;
 
     stream << GetLabel()+1 << ":{";
-    //stream << GetStates();
     int first = true;
     for (int i = 0; i < tree_->num_states_; i++) {
         if ((states_ >> i) & 1 == 1) {
