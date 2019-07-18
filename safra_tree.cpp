@@ -158,7 +158,7 @@ void SafraTree::SafraNode::UnmarkAndUpdate(const int &c) {
     SetMarked(false);
     int64_t new_states = 0;
     for (int i = 0; i < tree_->num_states_; i++) {
-        if ((states_ >> i) & 1 == 1) {
+        if (((states_ >> i) & 1) == 1) {
             new_states = tree_->Union(new_states, tree_->Transition(i, c));
         }
     }
@@ -511,7 +511,7 @@ std::string SafraTree::SafraNode::ToString() {
     stream << GetLabel()+1 << ":{";
     int first = true;
     for (int i = 0; i < tree_->num_states_; i++) {
-        if ((states_ >> i) & 1 == 1) {
+        if (((states_ >> i) & 1) == 1) {
             if (!first) { stream << ","; }
             else { first = false; }
             stream << i+1;
